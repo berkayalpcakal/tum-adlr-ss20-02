@@ -54,19 +54,20 @@ class ColliderEnv(gym.GoalEnv):
 
     def _get_obs(self) -> Observation:
         red = p.getBasePositionAndOrientation(self._red_box)  # (pos, quaternion)
+        red_pos = np.array(red[0]).reshape((3,1))
         blue = p.getBasePositionAndOrientation(self._blue_box)
         blue_pos = np.array(blue[0]).reshape((3,1))
 
         state = np.concatenate((np.concatenate(red), np.concatenate(blue)))  # len: 14
-        return Observation(observation=state, achieved_goal=blue_pos,
+        return Observation(observation=state, achieved_goal=red_pos,
                            desired_goal=self._desired_blue_pos)
 
     def compute_reward(self, achieved_goal: np.ndarray, desired_goal: np.ndarray, info) -> float:
         return 0 if _goals_are_close(achieved_goal, desired_goal) else -1
 
     def reset(self):
-        _reset_object(self._red_box, pos=[0, 0, 0.51], quaternion=[0, 0, 0, 1])
-        _reset_object(self._blue_box, pos=[2 + random.uniform(0, 1), 0, 0.51], quaternion=[0, 0, 0, 1])
+        _reset_object(self._red_box,  pos=[0, 0, 0.51], quaternion=[0, 0, 0, 1])
+        _reset_object(self._blue_box, pos=[random.uniform(5, 10), random.uniform(-10, 10), 0.51], quaternion=[0, 0, 0, 1])
         return self._get_obs()
 
     def render(self, mode='human'):
@@ -83,7 +84,7 @@ def distance(x1: np.ndarray, x2: np.ndarray):
 
 
 def _goals_are_close(achieved_goal: np.ndarray, desired_goal: np.ndarray):
-    ε = 0.1
+    ε = 1
     return distance(achieved_goal, desired_goal) < ε
 
 
