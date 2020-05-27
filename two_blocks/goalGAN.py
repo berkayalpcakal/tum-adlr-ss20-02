@@ -83,7 +83,7 @@ def trajectory(π: Agent, env: SettableGoalEnv, goal: np.ndarray):
     for t in range(max_episode_length):
         action = π.act(obs)
         next_obs, reward, done, _ = env.step(action)
-        time.sleep(1/24)
+        time.sleep(1/240)
 
         if t % 100 == 0:
             print(f"achieved goal: {obs.achieved_goal.T},"
