@@ -9,10 +9,9 @@ from two_blocks_env.collider_env import Observation, SettableGoalEnv, distance
 from LSGAN import LSGAN
 
 #### PARAMETERS ####
-num_old_goals = 100
 Rmin = 0.1
 Rmax = 0.9
-max_episode_length = 1000
+max_episode_length = 500
 
 G_Input_Size  = 4       # noise dim, somehow noise size is defined as 4 in their implementation for ant_gan experiment
 G_Hidden_Size = 256
@@ -37,18 +36,16 @@ class RandomAgent(Agent):
         return self._action_space.sample()
 
 
-def sample(goals_old: Sequence[np.ndarray]):
-    return random.sample(goals_old, k=min(num_old_goals, len(goals_old)))
+def sample_from_list(list_to_sample: Sequence[np.ndarray], out_length):
+    return random.sample(list_to_sample, k=out_length)
 
-def concatenate_goals(generated_goals, old_goals):
+def concatenate_goals(generated_goals, old_goals, num_samples_from_old_goals):
     """
-    TODO: Shall be implemented according to Appendix A.1 
-    2/3 from gan generated goals, 1/3 from old goals
-    To avoid concentration of goals, concatinate only the 
-    goals which are away from old_goals
+    Implemented according to Appendix A.1: 2/3 from gan generated goals, 1/3 from old goals
+    TODO: To avoid concentration of goals, concatinate only the goals which are away from old_goals
     """
-
-    return generated_goals 
+    sampled_old_goals = np.array(sample_from_list(list(old_goals), min(len(old_goals), num_samples_from_old_goals))).reshape((-1,2,1))
+    return np.append(generated_goals, sampled_old_goals, axis=0) 
 
 Network = Callable
 Goals = Sequence[np.ndarray]
@@ -57,12 +54,6 @@ Returns = Sequence[float]
 
 def initialize_GAN(obs_space: gym.spaces.Dict) -> Tuple[Network, Network]:
     goalGAN = LSGAN(G_Input_Size, G_Hidden_Size, G_Output_Size, D_Input_Size, D_Hidden_Size, D_Output_Size)
-
-    def G(noise_vector: np.ndarray):
-        return [obs_space['desired_goal'].sample() for _ in noise_vector]
-
-    def D():
-        pass
 
     return goalGAN.Generator, goalGAN.Discriminator
 
