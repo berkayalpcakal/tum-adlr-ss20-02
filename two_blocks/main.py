@@ -8,7 +8,7 @@ import torch.nn as nn
 import pybullet as p
 
 """
-Algorithm in the GAN paper, Floarensa 2018 
+Algorithm in the GAN paper, Florensa 2018 
 
 for i in iterations:
     z         = sample_noise()                      # input for goal generator network
