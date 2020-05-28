@@ -44,14 +44,14 @@ class ColliderEnv(SettableGoalEnv):
         self._blue_box = p.loadURDF(self._blue_box_fname, [2, 0, self._box_height])
         self.action_space = spaces.Box(low=-10, high=10, shape=(2, 1), dtype=np.float)
 
-        goal_space = spaces.Box(low=-10, high=10, shape=(2, 1), dtype=np.float)
+        self.goal_space = spaces.Box(low=-10, high=10, shape=(2, 1), dtype=np.float)
         self.observation_space = spaces.Dict(spaces={
             "observation": spaces.Box(low=-100, high=100, shape=(14, 1), dtype=np.float),
-            "desired_goal": goal_space,
-            "achieved_goal": goal_space
+            "desired_goal": self.goal_space,
+            "achieved_goal": self.goal_space
         })
 
-        self._desired_goal = np.ones(3) * 5
+        self._desired_goal = np.ones(2) * 5
 
     def step(self, action: np.ndarray):
         _apply_force(obj=self._ball, force=action)

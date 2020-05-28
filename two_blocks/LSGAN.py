@@ -5,9 +5,9 @@ from torchvision.utils import make_grid
 import matplotlib
 
 
-class GoalGAN():
-    def __init__(self, generator_input_size = 14, generator_hidden_size=256, generator_output_size=3,
-                 discriminator_input_size = 3, discriminator_hidden_size=128, discriminator_output_size=1):
+class LSGAN():
+    def __init__(self, generator_input_size = 4,     generator_hidden_size=256,     generator_output_size=3,
+                       discriminator_input_size = 3, discriminator_hidden_size=128, discriminator_output_size=1):
         self.Generator     = Generator(generator_input_size, generator_hidden_size, generator_output_size)
         self.Discriminator = Discriminator(discriminator_input_size, discriminator_hidden_size, discriminator_output_size)
 
@@ -20,6 +20,7 @@ class GoalGAN():
 class Generator(nn.Module):
     def __init__(self, input_size, hidden_size, output_size):
         super(Generator, self).__init__()
+        self.noise_size       = input_size
 
         self.loss = nn.MSELoss()    # TODO Change Loss
 
@@ -30,7 +31,7 @@ class Generator(nn.Module):
         
         self.layer2 = nn.Sequential(
             nn.Linear(hidden_size, output_size),
-            nn.Tanh() * 10  # tanh returns values between [-1,1]
+            nn.Tanh()               # tanh returns values between [-1,1]
         )
 
         self.all_layers = nn.Sequential(
