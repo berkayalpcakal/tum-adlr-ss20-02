@@ -2,3 +2,4 @@ __pycache__/
 spinningup/
 .idea/
 *.iml
+ppo2_collider.zip

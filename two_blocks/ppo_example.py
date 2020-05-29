@@ -1,23 +1,43 @@
 """Taken from https://stable-baselines.readthedocs.io/en/master/modules/ppo2.html"""
+import os
+import time
+import numpy as np
+from itertools import count
 
+from gym.wrappers import FlattenObservation
 from stable_baselines.common.policies import MlpPolicy
-from stable_baselines.common import make_vec_env
 from stable_baselines import PPO2
+from two_blocks_env.collider_env import ColliderEnv
 
-# multiprocess environment
-env = make_vec_env('CartPole-v1', n_envs=4)
 
-model = PPO2(MlpPolicy, env, verbose=1)
-model.learn(total_timesteps=25000)
-model.save("ppo2_cartpole")
+fname = "ppo2_collider"
+if not os.path.exists(fname + ".zip"):
+    env = FlattenObservation(ColliderEnv(visualize=False))
+    model = PPO2(MlpPolicy, env, verbose=1)
+    model.learn(total_timesteps=100000)
+    model.save(fname)
+    del model  # remove to demonstrate saving and loading
 
-del model # remove to demonstrate saving and loading
+model = PPO2.load(fname)
+env = FlattenObservation(ColliderEnv(visualize=True))
 
-model = PPO2.load("ppo2_cartpole")
 
-# Enjoy trained agent
-obs = env.reset()
+# For comparison
+def perfect_action(obs) -> np.ndarray:
+    ball_pos = obs[4:6]
+    target_pos = obs[6:8]
+    return (target_pos - ball_pos) / np.linalg.norm(target_pos - ball_pos)
+
+
 while True:
-    action, _states = model.predict(obs)
-    obs, rewards, dones, info = env.step(action)
-    env.render("human")
+    done = False
+    obs = env.reset()
+    for t in count(1):
+        action, _ = model.predict(obs)
+        #action = perfect_action(obs)
+        obs, _, done, _ = env.step(action)
+        time.sleep(1/240)
+        if done:
+            break
+        if t % 10 == 0:
+            print(f"step {t}")
