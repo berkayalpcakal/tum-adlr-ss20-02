@@ -1,11 +1,8 @@
 import torch
 import torch.nn as nn
-from torchvision.utils import save_image
-from torchvision.utils import make_grid
-import matplotlib
 
 
-class LSGAN():
+class LSGAN:
     def __init__(self, generator_input_size = 4,     generator_hidden_size=256,     generator_output_size=3,
                        discriminator_input_size = 3, discriminator_hidden_size=128, discriminator_output_size=1):
         self.Generator     = Generator(generator_input_size, generator_hidden_size, generator_output_size)
@@ -17,9 +14,10 @@ class LSGAN():
         self.generator_losses     = []
         self.discriminator_losses = []
 
+
 class Generator(nn.Module):
     def __init__(self, input_size, hidden_size, output_size):
-        super(Generator, self).__init__()
+        super().__init__()
         self.noise_size       = input_size
 
         self.loss = nn.MSELoss()    # TODO Change Loss
@@ -39,7 +37,7 @@ class Generator(nn.Module):
             self.layer2
         )
 
-        weights_xavier_init(self)
+        self.apply(weights_xavier_init)
 
     def forward(self, input):
         output = self.all_layers(input)
@@ -48,7 +46,7 @@ class Generator(nn.Module):
 
 class Discriminator(nn.Module):
     def __init__(self, input_size, hidden_size, output_size):
-        super(Discriminator, self).__init__()
+        super().__init__()
 
         self.loss = nn.MSELoss()    # TODO Change Loss
 
@@ -66,16 +64,15 @@ class Discriminator(nn.Module):
             self.layer2
         )
 
-        weights_xavier_init(self)
+        self.apply(weights_xavier_init)
 
     def forward(self, input):
         output = self.all_layers(input)
         return output
 
 
-def weights_xavier_init(model):
-    for m in model._modules:     
-        if isinstance(m, nn.Linear):
-            torch.nn.init.xavier_uniform_(m.weight)
-            if m.bias is not None:
-                torch.nn.init.zeros_(m.bias)
+def weights_xavier_init(m: nn.Module):
+    if isinstance(m, nn.Linear):
+        torch.nn.init.xavier_uniform_(m.weight)
+        if m.bias is not None:
+            torch.nn.init.zeros_(m.bias)

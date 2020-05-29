@@ -39,6 +39,7 @@ class RandomAgent(Agent):
 def sample_from_list(list_to_sample: Sequence[np.ndarray], out_length):
     return random.sample(list_to_sample, k=out_length)
 
+
 def concatenate_goals(generated_goals, old_goals, num_samples_from_old_goals):
     """
     Implemented according to Appendix A.1: 2/3 from gan generated goals, 1/3 from old goals
@@ -46,6 +47,7 @@ def concatenate_goals(generated_goals, old_goals, num_samples_from_old_goals):
     """
     sampled_old_goals = np.array(sample_from_list(list(old_goals), min(len(old_goals), num_samples_from_old_goals))).reshape((-1,2,1))
     return np.append(generated_goals, sampled_old_goals, axis=0) 
+
 
 Network = Callable
 Goals = Sequence[np.ndarray]

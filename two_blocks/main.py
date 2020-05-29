@@ -31,13 +31,14 @@ num_samples_from_old_goals = 2 #100
 ####################
 
 env  = ColliderEnv(visualize=True)
+dim_goal = env.observation_space["desired_goal"].shape[0]
 π    = RandomAgent(action_space=env.action_space)
 G, D = initialize_GAN(obs_space=env.observation_space)
-goals_old = np.array([]).reshape((-1,2,1))
+goals_old = torch.Tensor().reshape((-1, dim_goal, 1))
 
 for i in range(iterations):
-    z         = torch.Tensor( np.random.normal(size=(num_samples_goalGAN_goals, G.noise_size)) )
-    gan_goals = G.forward(z).detach().numpy().reshape(num_samples_goalGAN_goals, 2, 1) * float(env.goal_space.high[0])
+    z         = torch.randn(size=(num_samples_goalGAN_goals, G.noise_size))
+    gan_goals = G.forward(z).detach().reshape(num_samples_goalGAN_goals, dim_goal, 1) * float(env.observation_space["desired_goal"].high[0])
     goals     = concatenate_goals(gan_goals, goals_old, num_samples_from_old_goals)
     π         = update_policy(goals, π, env)
     returns   = evaluate_policy(goals, π, env)
