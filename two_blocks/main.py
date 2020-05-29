@@ -1,8 +1,8 @@
 import numpy as np
 
 from GenerativeGoalLearning import RandomAgent, initialize_GAN, update_policy, evaluate_policy, \
-    label_goals, train_GAN, update_replay, concatenate_goals
-from two_blocks_env.collider_env import ColliderEnv
+    label_goals, train_GAN, update_replay, sample
+from two_blocks_env.collider_env import ColliderEnv, dim_goal
 
 from spinup import ppo_pytorch as ppo
 import torch.nn as nn
@@ -31,15 +31,14 @@ num_samples_from_old_goals = 2 #100
 ####################
 
 env  = ColliderEnv(visualize=True)
-dim_goal = env.observation_space["desired_goal"].shape[0]
 π    = RandomAgent(action_space=env.action_space)
-G, D = initialize_GAN(obs_space=env.observation_space)
-goals_old = torch.Tensor().reshape((-1, dim_goal, 1))
+G, D = initialize_GAN(env=env)
+goals_old = torch.empty(0, dim_goal(env))
 
 for i in range(iterations):
     z         = torch.randn(size=(num_samples_goalGAN_goals, G.noise_size))
-    gan_goals = G.forward(z).detach().reshape(num_samples_goalGAN_goals, dim_goal, 1) * float(env.observation_space["desired_goal"].high[0])
-    goals     = concatenate_goals(gan_goals, goals_old, num_samples_from_old_goals)
+    gan_goals = G.forward(z).detach() * float(env.observation_space["desired_goal"].high[0])
+    goals     = torch.cat([gan_goals, sample(goals_old, k=num_samples_from_old_goals)])
     π         = update_policy(goals, π, env)
     returns   = evaluate_policy(goals, π, env)
     labels    = label_goals(returns)

@@ -1,11 +1,13 @@
 import random
 import time
-from typing import Sequence, Callable, Tuple
+from typing import Sequence, Tuple
 
 import gym
 import numpy as np
+import torch
+from torch import nn, Tensor
 
-from two_blocks_env.collider_env import Observation, SettableGoalEnv, distance
+from two_blocks_env.collider_env import Observation, SettableGoalEnv, distance, dim_goal
 from LSGAN import LSGAN
 
 #### PARAMETERS ####
@@ -15,11 +17,7 @@ max_episode_length = 500
 
 G_Input_Size  = 4       # noise dim, somehow noise size is defined as 4 in their implementation for ant_gan experiment
 G_Hidden_Size = 256
-G_Output_Size = 2       # 2D position vector as goal
-
-D_Input_Size  = G_Output_Size
 D_Hidden_Size = 128
-D_Output_Size = 1       # distinguish whether g is in GOID or not
 ####################
 
 
@@ -40,29 +38,34 @@ def sample_from_list(list_to_sample: Sequence[np.ndarray], out_length):
     return random.sample(list_to_sample, k=out_length)
 
 
-def concatenate_goals(generated_goals, old_goals, num_samples_from_old_goals):
+def sample(t: Tensor, k: int) -> Tensor:
     """
+    https://stackoverflow.com/questions/59461811/random-choice-with-pytorch
     Implemented according to Appendix A.1: 2/3 from gan generated goals, 1/3 from old goals
     TODO: To avoid concentration of goals, concatinate only the goals which are away from old_goals
     """
-    sampled_old_goals = np.array(sample_from_list(list(old_goals), min(len(old_goals), num_samples_from_old_goals))).reshape((-1,2,1))
-    return np.append(generated_goals, sampled_old_goals, axis=0) 
+    num_samples = min(len(t), k)
+    indices = torch.randperm(len(t))[:num_samples]
+    return t[indices]
 
 
-Network = Callable
-Goals = Sequence[np.ndarray]
+Goals = Tensor
 Returns = Sequence[float]
 
 
-def initialize_GAN(obs_space: gym.spaces.Dict) -> Tuple[Network, Network]:
-    goalGAN = LSGAN(G_Input_Size, G_Hidden_Size, G_Output_Size, D_Input_Size, D_Hidden_Size, D_Output_Size)
-
+def initialize_GAN(env: gym.GoalEnv) -> Tuple[nn.Module, nn.Module]:
+    goalGAN = LSGAN(generator_input_size=G_Input_Size,
+                    generator_hidden_size=G_Hidden_Size,
+                    generator_output_size=dim_goal(env),
+                    discriminator_input_size=dim_goal(env),
+                    discriminator_hidden_size=D_Hidden_Size,
+                    discriminator_output_size=1) # distinguish whether g is in GOID or not
     return goalGAN.Generator, goalGAN.Discriminator
 
 
 def update_policy(goals: Goals, π: Agent, env: SettableGoalEnv) -> Agent:
     """Placeholder update. Exemplary use of trajectory() below"""
-    for g in goals:
+    for g in goals.numpy():
         τ = trajectory(π=π, env=env, goal=g)
         for (s, a, r, s2, done) in τ:
             pass
@@ -78,7 +81,7 @@ def label_goals(returns: Returns) -> Sequence[int]:
     return [int(Rmin <= r <= Rmax) for r in returns]
 
 
-def train_GAN(goals: Goals, labels: Sequence[int], G: Network, D: Network) -> Tuple[Network, Network]:
+def train_GAN(goals: Goals, labels: Sequence[int], G: nn.Module, D: nn.Module) -> Tuple[nn.Module, nn.Module]:
     """Placeholder training"""
     return G, D
 

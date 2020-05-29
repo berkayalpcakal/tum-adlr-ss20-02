@@ -42,9 +42,9 @@ class ColliderEnv(SettableGoalEnv):
         self._box_height = 0.51
         self._ball = p.loadURDF(self._little_ball_fname, [0, 0, 0])
         self._blue_box = p.loadURDF(self._blue_box_fname, [2, 0, self._box_height])
-        self.action_space = spaces.Box(low=-10, high=10, shape=(2, 1), dtype=np.float)
+        self.action_space = spaces.Box(low=-10, high=10, shape=(2,), dtype=np.float)
 
-        self.goal_space = spaces.Box(low=-10, high=10, shape=(2, 1), dtype=np.float)
+        self.goal_space = spaces.Box(low=-10, high=10, shape=(2,), dtype=np.float)
         self.observation_space = spaces.Dict(spaces={
             "observation": spaces.Box(low=-100, high=100, shape=(14, 1), dtype=np.float),
             "desired_goal": self.goal_space,
@@ -88,7 +88,7 @@ class ColliderEnv(SettableGoalEnv):
     def set_goal(self, new_goal: np.ndarray):
         assert isinstance(new_goal, np.ndarray)
         assert self.observation_space["desired_goal"].contains(new_goal)
-        _reset_object(self._blue_box, pos=list(new_goal.T[0]) + [self._box_height], quaternion=[0, 0, 0, 1])
+        _reset_object(self._blue_box, pos=[*new_goal, self._box_height], quaternion=[0, 0, 0, 1])
         self._desired_goal = new_goal
 
 
@@ -106,7 +106,7 @@ def _reset_object(obj, pos: Sequence[float], quaternion: Sequence[float]):
 
 
 def _position(position_and_orientation: Sequence[float]) -> np.ndarray:
-    return np.array(position_and_orientation[0])[:2].reshape((2, 1))
+    return np.array(position_and_orientation[0])[:2]
 
 
 _zforce = 0
@@ -114,3 +114,7 @@ _at_obj_position = [0, 0, 0]
 _at_obj_root = -1
 def _apply_force(obj, force: Sequence[float]):
     p.applyExternalForce(obj, _at_obj_root, [*force, _zforce], _at_obj_position, flags=p.WORLD_FRAME)
+
+
+def dim_goal(env: gym.GoalEnv):
+    return env.observation_space["desired_goal"].shape[0]
