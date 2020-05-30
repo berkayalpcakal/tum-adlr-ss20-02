@@ -1,0 +1,102 @@
+<?xml version="1.0"?>
+<robot name="tomas-labyrinth">
+
+  <material name="wall_color">
+    <color rgba="0 0 0.8 1"/>
+  </material>
+
+  <link name="left_wall">
+    <visual>
+      <geometry>
+        <box size="20 0.5 3"/>
+      </geometry>
+      <material name="wall_color"/>
+    </visual>
+    <collision>
+      <geometry>
+        <box size="20 0.5 3"/>
+      </geometry>
+    </collision>
+  </link>
+
+  <link name="right_wall">
+    <visual>
+      <geometry>
+        <box size="20 0.5 3"/>
+      </geometry>
+      <material name="wall_color" />
+    </visual>
+    <collision>
+      <geometry>
+        <box size="20 0.5 3"/>
+      </geometry>
+    </collision>
+  </link>
+
+  <joint name="wall_left_right" type="fixed">
+    <parent link="left_wall"/>
+    <child link="right_wall"/>
+    <origin xyz="0 10 0"/>
+  </joint>
+
+  <link name="north_wall">
+    <visual>
+      <geometry>
+        <box size="10 0.5 3"/>
+      </geometry>
+      <material name="wall_color" />
+    </visual>
+    <collision>
+      <geometry>
+        <box size="10 0.5 3"/>
+      </geometry>
+    </collision>
+  </link>
+
+  <joint name="wall_left_north" type="fixed">
+    <parent link="left_wall"/>
+    <child link="north_wall"/>
+    <origin xyz="10 5 0" rpy="0 0 1.57079"/>
+  </joint>
+
+  <link name="south_wall">
+    <visual>
+      <geometry>
+        <box size="10 0.5 3"/>
+      </geometry>
+      <material name="wall_color" />
+    </visual>
+    <collision>
+      <geometry>
+        <box size="10 0.5 3"/>
+      </geometry>
+    </collision>
+  </link>
+
+  <joint name="wall_left_south" type="fixed">
+    <parent link="left_wall"/>
+    <child link="south_wall"/>
+    <origin xyz="-10 5 0" rpy="0 0 1.57079"/>
+  </joint>
+
+  <link name="middle_wall">
+    <visual>
+      <geometry>
+        <box size="16 0.5 3"/>
+      </geometry>
+      <material name="wall_color" />
+    </visual>
+    <collision>
+      <geometry>
+        <box size="16 0.5 3"/>
+      </geometry>
+    </collision>
+  </link>
+
+  <joint name="wall_left_middle" type="fixed">
+    <parent link="left_wall"/>
+    <child link="middle_wall"/>
+    <origin xyz="-2 5 0"/>
+  </joint>
+
+</robot>
