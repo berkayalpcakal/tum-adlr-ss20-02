@@ -17,3 +17,13 @@ python main.py
 # Environment
 Currently, we have a red ball that is controlled by the agent and whose
 goal is to reach the blue block.
+
+# Testing
+First install the this package. From **this** folder, run:
+```bash
+python -m pip install -e .
+```
+Then run the tests. From **above** this folder, run:
+```bash
+python -m pytest
+```

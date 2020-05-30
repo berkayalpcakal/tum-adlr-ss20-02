@@ -34,8 +34,12 @@ class RandomAgent(Agent):
         return self._action_space.sample()
 
 
-def sample_from_list(list_to_sample: Sequence[np.ndarray], out_length):
-    return random.sample(list_to_sample, k=out_length)
+class NullAgent(Agent):
+    def __init__(self, action_space: gym.spaces.Space):
+        self._action_space = action_space
+
+    def act(self, obs: Observation) -> np.ndarray:
+        return np.zeros(shape=self._action_space.shape)
 
 
 def sample(t: Tensor, k: int) -> Tensor:

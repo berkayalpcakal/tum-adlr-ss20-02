@@ -3,3 +3,5 @@ spinningup/
 .idea/
 *.iml
 ppo2_collider.zip
+videos/
+*.egg-info/
