@@ -1,7 +1,7 @@
 import numpy as np
 
 from two_blocks_env.collider_env import ColliderEnv
-from GenerativeGoalLearning import trajectory, NullAgent
+from GenerativeGoalLearning import trajectory, null_agent
 
 NULL_ACTION = np.zeros(shape=ColliderEnv.action_space.shape)
 
@@ -35,6 +35,6 @@ def test_restart_reset_steps():
 
 def test_env_trajectory():
     env = ColliderEnv(visualize=False, max_episode_len=10)
-    agent = NullAgent(action_space=env.action_space)
+    agent = null_agent(action_space=env.action_space)
     goal = env.observation_space["desired_goal"].high
     assert len(list(trajectory(π=agent, env=env, goal=goal))) == 10

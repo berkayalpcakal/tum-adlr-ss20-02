@@ -10,7 +10,7 @@ class Labyrinth(ColliderEnv):
 
     def __init__(self, visualize: bool = True, max_episode_len: int = 200):
         super().__init__(visualize, max_episode_len)
-        self._bullet.loadURDF(self._labyrinth_fname, self._labyrinth_position)
+        self._bullet.loadURDF(self._labyrinth_fname, self._labyrinth_position, useFixedBase=1)
 
 
 if __name__ == '__main__':

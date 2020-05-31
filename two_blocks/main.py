@@ -1,13 +1,8 @@
-import numpy as np
-
-from GenerativeGoalLearning import RandomAgent, initialize_GAN, update_policy, evaluate_policy, \
-    label_goals, train_GAN, update_replay, sample
+from GenerativeGoalLearning import initialize_GAN, update_policy, evaluate_policy, \
+    label_goals, train_GAN, sample, random_agent
 from two_blocks_env.collider_env import ColliderEnv, dim_goal
 
-from spinup import ppo_pytorch as ppo
-import torch.nn as nn
 import torch
-import pybullet as p
 
 """
 Algorithm in the GAN paper, Florensa 2018 
@@ -31,7 +26,7 @@ num_samples_from_old_goals = 2 #100
 ####################
 
 env  = ColliderEnv(visualize=True)
-π    = RandomAgent(action_space=env.action_space)
+π    = random_agent(action_space=env.action_space)
 G, D = initialize_GAN(env=env)
 goals_old = torch.empty(0, dim_goal(env))
 

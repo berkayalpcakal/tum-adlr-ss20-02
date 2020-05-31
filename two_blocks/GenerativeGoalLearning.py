@@ -1,5 +1,6 @@
 import random
 import time
+from typing import Callable
 from typing import Sequence, Tuple
 
 import gym
@@ -21,25 +22,15 @@ D_Hidden_Size = 128
 ####################
 
 
-class Agent:
-    def act(self, obs: Observation) -> np.ndarray:
-        raise NotImplementedError
+Agent = Callable[[Observation], np.ndarray]
 
 
-class RandomAgent(Agent):
-    def __init__(self, action_space: gym.spaces.Space):
-        self._action_space = action_space
-
-    def act(self, obs: Observation) -> np.ndarray:
-        return self._action_space.sample()
+def random_agent(action_space: gym.spaces.Space) -> Agent:
+    return lambda obs: action_space.sample()
 
 
-class NullAgent(Agent):
-    def __init__(self, action_space: gym.spaces.Space):
-        self._action_space = action_space
-
-    def act(self, obs: Observation) -> np.ndarray:
-        return np.zeros(shape=self._action_space.shape)
+def null_agent(action_space: gym.spaces.Space) -> Agent:
+    return lambda obs: np.zeros(shape=action_space.shape)
 
 
 def sample(t: Tensor, k: int) -> Tensor:
@@ -95,12 +86,13 @@ def update_replay(goals: Goals) -> Goals:
     return goals
 
 
-def trajectory(π: Agent, env: SettableGoalEnv, goal: np.ndarray):
+def trajectory(π: Agent, env: SettableGoalEnv, goal: np.ndarray = None):
     obs = env.reset()
+    if goal is not None:
+        env.set_goal(goal)
 
-    env.set_goal(goal)
     for t in range(max_episode_length):
-        action = π.act(obs)
+        action = π(obs)
         next_obs, reward, done, _ = env.step(action)
         time.sleep(1/240)
 
