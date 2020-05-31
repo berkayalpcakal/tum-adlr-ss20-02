@@ -39,6 +39,7 @@ class ColliderEnv(SettableGoalEnv):
     __filelocation__ = os.path.realpath(os.path.join(os.getcwd(), os.path.dirname(__file__)))
     _blue_box_fname = os.path.join(__filelocation__, 'assets/blue_block.urdf')
     _little_ball_fname = os.path.join(__filelocation__, 'assets/little_ball.urdf')
+    _target_dot_fname = os.path.join(__filelocation__, 'assets/immaterial_ball.urdf')
 
     _box_height = 0.51
     _box_initial_pos = [2, 0, _box_height]
@@ -57,7 +58,7 @@ class ColliderEnv(SettableGoalEnv):
         self._bullet.setGravity(0, 0, -9.81)
         self._bullet.loadURDF("plane.urdf")
         self._ball = self._bullet.loadURDF(self._little_ball_fname, self._ball_initial_pos)
-        self._blue_box = self._bullet.loadURDF(self._blue_box_fname, self._box_initial_pos)
+        self._blue_box = self._bullet.loadURDF(self._target_dot_fname, self._box_initial_pos, useFixedBase=1)
 
         self._desired_goal = np.ones(2) * 5
         self._max_episode_len = max_episode_len
@@ -115,7 +116,7 @@ def distance(x1: np.ndarray, x2: np.ndarray):
 
 
 def _goals_are_close(achieved_goal: np.ndarray, desired_goal: np.ndarray):
-    ε = 1
+    ε = 0.3
     return distance(achieved_goal, desired_goal) < ε
 
 
@@ -139,3 +140,10 @@ def _apply_force(bc: BulletClient, obj, force: Sequence[float]):
 
 def dim_goal(env: gym.GoalEnv):
     return env.observation_space["desired_goal"].shape[0]
+
+
+if __name__ == '__main__':
+    env = ColliderEnv()
+    while True:
+        env.step([0, 0])
+        time.sleep(1/240)

@@ -1,0 +1,13 @@
+<?xml version="0.0" ?>
+<robot name="immaterial_ball">
+  <link name="baseLink">
+    <visual>
+      <geometry>
+        <sphere radius="0.3"/>
+      </geometry>
+      <material name="transparent_green">
+        <color rgba="0 1 0 0.5"/>
+      </material>
+    </visual>
+  </link>
+</robot>
