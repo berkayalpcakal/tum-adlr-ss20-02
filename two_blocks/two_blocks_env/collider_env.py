@@ -37,13 +37,11 @@ class ColliderEnv(SettableGoalEnv):
         "achieved_goal": goal_space
     })
     __filelocation__ = os.path.realpath(os.path.join(os.getcwd(), os.path.dirname(__file__)))
-    _blue_box_fname = os.path.join(__filelocation__, 'assets/blue_block.urdf')
-    _little_ball_fname = os.path.join(__filelocation__, 'assets/little_ball.urdf')
-    _target_dot_fname = os.path.join(__filelocation__, 'assets/immaterial_ball.urdf')
+    _red_ball_fname = os.path.join(__filelocation__, 'assets/little_ball.urdf')
+    _green_ball_fname = os.path.join(__filelocation__, 'assets/immaterial_ball.urdf')
 
-    _box_height = 0.51
-    _box_initial_pos = [2, 0, _box_height]
     _ball_radius = 0.3
+    _green_ball_initial_pos = [2, 0, _ball_radius]
     _ball_initial_pos = [0, 0, _ball_radius]
     _viz_lock_taken = False
 
@@ -57,8 +55,8 @@ class ColliderEnv(SettableGoalEnv):
         self._bullet.setAdditionalSearchPath(pybullet_data.getDataPath())  # used by loadURDF
         self._bullet.setGravity(0, 0, -9.81)
         self._bullet.loadURDF("plane.urdf")
-        self._ball = self._bullet.loadURDF(self._little_ball_fname, self._ball_initial_pos)
-        self._blue_box = self._bullet.loadURDF(self._target_dot_fname, self._box_initial_pos, useFixedBase=1)
+        self._ball = self._bullet.loadURDF(self._red_ball_fname, self._ball_initial_pos)
+        self._target_ball = self._bullet.loadURDF(self._green_ball_fname, self._green_ball_initial_pos, useFixedBase=1)
 
         self._desired_goal = np.ones(2) * 5
         self._max_episode_len = max_episode_len
@@ -85,7 +83,7 @@ class ColliderEnv(SettableGoalEnv):
     def _get_obs(self) -> Observation:
         """This is a private method! Do not use outside of env"""
         ball_pos = _position(self._bullet.getBasePositionAndOrientation(self._ball))
-        blue_pos = _position(self._bullet.getBasePositionAndOrientation(self._blue_box))
+        blue_pos = _position(self._bullet.getBasePositionAndOrientation(self._target_ball))
 
         state = np.concatenate((ball_pos, blue_pos))  # len=4
         return Observation(observation=state, achieved_goal=ball_pos, desired_goal=self._desired_goal)
@@ -97,8 +95,8 @@ class ColliderEnv(SettableGoalEnv):
         self._step_num = 0
         _reset_object(self._bullet, self._ball, pos=self._ball_initial_pos)
         random_goal = self.observation_space["desired_goal"].sample()
-        _reset_object(self._bullet, self._blue_box, pos=[*random_goal, self._box_height])
-        self.set_goal(_position(self._bullet.getBasePositionAndOrientation(self._blue_box)))
+        _reset_object(self._bullet, self._target_ball, pos=[*random_goal, self._ball_radius])
+        self.set_goal(_position(self._bullet.getBasePositionAndOrientation(self._target_ball)))
         return self._get_obs()
 
     def render(self, mode='human'):
@@ -107,7 +105,7 @@ class ColliderEnv(SettableGoalEnv):
     def set_goal(self, new_goal: np.ndarray):
         assert isinstance(new_goal, np.ndarray)
         assert self.observation_space["desired_goal"].contains(new_goal)
-        _reset_object(self._bullet, self._blue_box, pos=[*new_goal, self._box_height])
+        _reset_object(self._bullet, self._target_ball, pos=[*new_goal, self._ball_radius])
         self._desired_goal = new_goal
 
 
