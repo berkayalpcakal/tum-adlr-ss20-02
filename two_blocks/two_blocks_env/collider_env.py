@@ -1,8 +1,7 @@
 import os
 import time
-from collections import UserDict
-from typing import Sequence
 from abc import ABC
+from typing import Sequence
 
 import numpy as np
 import pybullet
@@ -13,7 +12,7 @@ from gym import spaces
 from pybullet_utils.bullet_client import BulletClient
 
 
-class Observation(UserDict):
+class Observation(dict):
     def __init__(self, observation: np.ndarray, achieved_goal: np.ndarray,
                  desired_goal: np.ndarray) -> None:
         super().__init__(observation=observation, achieved_goal=achieved_goal,
@@ -33,7 +32,7 @@ class ColliderEnv(SettableGoalEnv):
     action_space = spaces.Box(low=-1, high=1, shape=(2,), dtype=np.float)
     goal_space = spaces.Box(low=-2, high=2, shape=(2,), dtype=np.float)
     observation_space = spaces.Dict(spaces={
-        "observation": spaces.Box(low=-100, high=100, shape=(4, 1), dtype=np.float),
+        "observation": spaces.Box(low=-100, high=100, shape=(4,), dtype=np.float),
         "desired_goal": goal_space,
         "achieved_goal": goal_space
     })
@@ -43,7 +42,8 @@ class ColliderEnv(SettableGoalEnv):
 
     _box_height = 0.51
     _box_initial_pos = [2, 0, _box_height]
-    _ball_initial_pos = [0, 0, 0.31]
+    _ball_radius = 0.3
+    _ball_initial_pos = [0, 0, _ball_radius]
     _viz_lock_taken = False
 
     def __init__(self, visualize: bool = True, max_episode_len: int = 200):

@@ -29,6 +29,7 @@ def test_restart_reset_steps():
         pass
 
     env.reset()
+    env.set_goal(np.array([1, 1]))
     assert not done(env.step(NULL_ACTION))
 
 

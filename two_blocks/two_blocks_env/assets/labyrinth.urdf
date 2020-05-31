@@ -8,13 +8,13 @@
   <link name="left_wall">
     <visual>
       <geometry>
-        <box size="20 0.5 3"/>
+        <box size="20 0.5 1.5"/>
       </geometry>
       <material name="wall_color"/>
     </visual>
     <collision>
       <geometry>
-        <box size="20 0.5 3"/>
+        <box size="20 0.5 1.5"/>
       </geometry>
     </collision>
   </link>
@@ -22,13 +22,13 @@
   <link name="right_wall">
     <visual>
       <geometry>
-        <box size="20 0.5 3"/>
+        <box size="20 0.5 1.5"/>
       </geometry>
       <material name="wall_color" />
     </visual>
     <collision>
       <geometry>
-        <box size="20 0.5 3"/>
+        <box size="20 0.5 1.5"/>
       </geometry>
     </collision>
   </link>
@@ -42,13 +42,13 @@
   <link name="north_wall">
     <visual>
       <geometry>
-        <box size="10 0.5 3"/>
+        <box size="10 0.5 1.5"/>
       </geometry>
       <material name="wall_color" />
     </visual>
     <collision>
       <geometry>
-        <box size="10 0.5 3"/>
+        <box size="10 0.5 1.5"/>
       </geometry>
     </collision>
   </link>
@@ -62,13 +62,13 @@
   <link name="south_wall">
     <visual>
       <geometry>
-        <box size="10 0.5 3"/>
+        <box size="10 0.5 1.5"/>
       </geometry>
       <material name="wall_color" />
     </visual>
     <collision>
       <geometry>
-        <box size="10 0.5 3"/>
+        <box size="10 0.5 1.5"/>
       </geometry>
     </collision>
   </link>
@@ -82,13 +82,13 @@
   <link name="middle_wall">
     <visual>
       <geometry>
-        <box size="16 0.5 3"/>
+        <box size="16 0.5 1.5"/>
       </geometry>
       <material name="wall_color" />
     </visual>
     <collision>
       <geometry>
-        <box size="16 0.5 3"/>
+        <box size="16 0.5 1.5"/>
       </geometry>
     </collision>
   </link>
