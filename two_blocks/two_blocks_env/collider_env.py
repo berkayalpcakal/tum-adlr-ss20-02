@@ -30,6 +30,7 @@ class SettableGoalEnv(ABC, gym.GoalEnv):
 class ColliderEnv(SettableGoalEnv):
 
     action_space = spaces.Box(low=-1, high=1, shape=(2,), dtype=np.float)
+    _action_tol = 0.01
     goal_space = spaces.Box(low=-2, high=2, shape=(2,), dtype=np.float)
     observation_space = spaces.Dict(spaces={
         "observation": spaces.Box(low=-100, high=100, shape=(4,), dtype=np.float),
@@ -63,8 +64,9 @@ class ColliderEnv(SettableGoalEnv):
         self._step_num = 0
 
     def step(self, action: np.ndarray):
-        assert self.action_space.contains(action)
+        assert self._action_is_valid(action), action
         self._step_num += 1
+        assert self._step_num <= self._max_episode_len
 
         for _ in range(10):
             if self._visualize:
@@ -73,12 +75,16 @@ class ColliderEnv(SettableGoalEnv):
             self._bullet.stepSimulation()
 
         obs = self._get_obs()
-        done = (_goals_are_close(obs.achieved_goal, obs.desired_goal)
-                or self._step_num % self._max_episode_len == 0)
+        is_success = _goals_are_close(obs.achieved_goal, obs.desired_goal)
+        done = (is_success or self._step_num % self._max_episode_len == 0)
         reward = self.compute_reward(achieved_goal=obs.achieved_goal,
                                      desired_goal=obs.desired_goal, info={})
 
-        return obs, reward, done, {}
+        return obs, reward, done, {"is_success": float(is_success)}
+
+    def _action_is_valid(self, action) -> bool:
+        return (all(self.action_space.low - self._action_tol <= action) and
+                all(action <= self.action_space.high + self._action_tol))
 
     def _get_obs(self) -> Observation:
         """This is a private method! Do not use outside of env"""
