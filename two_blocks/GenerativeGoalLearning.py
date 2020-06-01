@@ -86,7 +86,7 @@ def update_replay(goals: Goals) -> Goals:
     return goals
 
 
-def trajectory(π: Agent, env: SettableGoalEnv, goal: np.ndarray = None):
+def trajectory(π: Agent, env: SettableGoalEnv, goal: np.ndarray = None, sleep_secs: float = 1/240):
     obs = env.reset()
     if goal is not None:
         env.set_goal(goal)
@@ -94,7 +94,8 @@ def trajectory(π: Agent, env: SettableGoalEnv, goal: np.ndarray = None):
     for t in range(max_episode_length):
         action = π(obs)
         next_obs, reward, done, info = env.step(action)
-        time.sleep(1/240)
+        time.sleep(sleep_secs)
+        env.render()
 
         if t % 10 == 0:
             print(f"achieved goal: {obs.achieved_goal.T},"

@@ -1,9 +1,16 @@
 import os
-from typing import Sequence, Tuple
+from typing import Sequence, Tuple, Callable
+import gym
+import numpy as np
+from stable_baselines.common import BaseRLModel
+from two_blocks_env.collider_env import Observation
 
 
 def latest_model(foldername: str):
     model_names = os.listdir(foldername)
+    assert len(model_names) > 0, model_names
+    if len(model_names) == 1:
+        return model_names[0]
     prefix_less, prefix = remove_common_prefix(model_names)
     nums_only, suffix = remove_common_suffix(prefix_less)
     latest_num = max(int(n) for n in nums_only)
@@ -23,3 +30,23 @@ def remove_common_suffix(strs: Sequence[str]) -> Tuple[Sequence[str], str]:
 
 def reverse(s: str) -> str:
     return "".join(reversed(s))
+
+
+def vf_for_model(model: BaseRLModel, currentObs: Observation):
+
+    def func(x, y):
+        new_obs = Observation(**currentObs)
+        new_obs["desired_goal"] = np.array([x, y])
+        flat_obs = gym.spaces.flatten(model.env.env.observation_space, new_obs)
+        return model.predict(flat_obs)[0]
+
+    return vector_field(func, space=model.env.env.observation_space["desired_goal"])
+
+
+def vector_field(func: Callable[[float, float], np.ndarray], space: gym.spaces.Box):
+    assert space.shape == (2,)
+    low_x, low_y = space.low
+    high_x, high_y = space.high
+    X, Y = np.mgrid[low_x:high_x:(high_x-low_x)/20, low_y:high_y:(high_y-low_y)/20]
+    U, V = np.array([func(*k) for c in zip(X, Y) for k in zip(*c)]).T
+    return X, Y, U.reshape(X.shape), V.reshape(X.shape)
