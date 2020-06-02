@@ -7,6 +7,7 @@ import gym
 import numpy as np
 import torch
 from torch import nn, Tensor
+from torch.autograd import Variable
 
 from two_blocks_env.collider_env import Observation, SettableGoalEnv, distance, dim_goal
 from LSGAN import LSGAN
@@ -55,7 +56,7 @@ def initialize_GAN(env: gym.GoalEnv) -> Tuple[nn.Module, nn.Module]:
                     discriminator_input_size=dim_goal(env),
                     discriminator_hidden_size=D_Hidden_Size,
                     discriminator_output_size=1) # distinguish whether g is in GOID or not
-    return goalGAN.Generator, goalGAN.Discriminator
+    return goalGAN
 
 
 def update_policy(goals: Goals, π: Agent, env: SettableGoalEnv) -> Agent:
@@ -76,9 +77,36 @@ def label_goals(returns: Returns) -> Sequence[int]:
     return [int(Rmin <= r <= Rmax) for r in returns]
 
 
-def train_GAN(goals: Goals, labels: Sequence[int], G: nn.Module, D: nn.Module) -> Tuple[nn.Module, nn.Module]:
-    """Placeholder training"""
-    return G, D
+def train_GAN(goals: Goals, labels: Sequence[int], goalGAN):
+
+    for i in range(len(labels)):
+
+        ### Train Discriminator ###
+        goalGAN.Discriminator.zero_grad()
+
+        z = Variable(Tensor(  np.random.normal(0, 1, goalGAN.Generator.noise_size)  ))
+
+        discriminator_loss = \
+            Tensor([labels[i]])     * ( goalGAN.Discriminator.forward(goals[i]) - Tensor([1]) )**2 + \
+            (1-Tensor([labels[i]])) * ( goalGAN.Discriminator.forward(goals[i]) + Tensor([1]) )**2 + \
+            ( goalGAN.Discriminator.forward( goalGAN.Generator.forward(z) ) + Tensor([1]))**2
+
+        discriminator_loss.backward()
+        goalGAN.D_Optimizer.step()
+
+        ### Train Generator ###
+        goalGAN.Generator.zero_grad()
+
+        z = Variable(Tensor(  np.random.normal(0, 1, goalGAN.Generator.noise_size)  ))
+
+        generator_loss = \
+            goalGAN.Discriminator.forward(goalGAN.Generator.forward(z))**2
+
+        generator_loss.backward()
+        goalGAN.G_Optimizer.step()
+
+
+    return goalGAN
 
 
 def update_replay(goals: Goals) -> Goals:

@@ -20,8 +20,6 @@ class Generator(nn.Module):
         super().__init__()
         self.noise_size       = input_size
 
-        self.loss = nn.MSELoss()    # TODO Change Loss
-
         self.layer1 = nn.Sequential(
             nn.Linear(input_size, hidden_size),
             nn.ReLU()
@@ -47,8 +45,6 @@ class Generator(nn.Module):
 class Discriminator(nn.Module):
     def __init__(self, input_size, hidden_size, output_size):
         super().__init__()
-
-        self.loss = nn.MSELoss()    # TODO Change Loss
 
         self.layer1 = nn.Sequential(
             nn.Linear(input_size, hidden_size),

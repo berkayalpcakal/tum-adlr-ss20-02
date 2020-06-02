@@ -27,15 +27,15 @@ num_samples_from_old_goals = 2 #100
 
 env  = ColliderEnv(visualize=True)
 π    = random_agent(action_space=env.action_space)
-G, D = initialize_GAN(env=env)
+goalGAN   = initialize_GAN(env=env)
 goals_old = torch.empty(0, dim_goal(env))
 
 for i in range(iterations):
-    z         = torch.randn(size=(num_samples_goalGAN_goals, G.noise_size))
-    gan_goals = G.forward(z).detach() * float(env.observation_space["desired_goal"].high[0])
+    z         = torch.randn(size=(num_samples_goalGAN_goals, goalGAN.Generator.noise_size))
+    gan_goals = goalGAN.Generator.forward(z).detach() * float(env.observation_space["desired_goal"].high[0])
     goals     = torch.cat([gan_goals, sample(goals_old, k=num_samples_from_old_goals)])
     π         = update_policy(goals, π, env)
     returns   = evaluate_policy(goals, π, env)
     labels    = label_goals(returns)
-    G, D      = train_GAN(goals, labels, G, D)
+    goalGAN   = train_GAN(goals, labels, goalGAN)
     goals_old = goals
