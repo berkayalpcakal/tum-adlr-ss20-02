@@ -4,8 +4,9 @@ import torch.nn as nn
 
 class LSGAN:
     def __init__(self, generator_input_size = 4,     generator_hidden_size=256,     generator_output_size=3,
-                       discriminator_input_size = 3, discriminator_hidden_size=128, discriminator_output_size=1):
-        self.Generator     = Generator(generator_input_size, generator_hidden_size, generator_output_size)
+                       discriminator_input_size = 3, discriminator_hidden_size=128, discriminator_output_size=1,
+                       map_scale=10):
+        self.Generator     = Generator(generator_input_size, generator_hidden_size, generator_output_size, map_scale)
         self.Discriminator = Discriminator(discriminator_input_size, discriminator_hidden_size, discriminator_output_size)
 
         self.G_Optimizer   = torch.optim.RMSprop(self.Generator.parameters(),     lr=0.001, alpha=0.99)
@@ -14,11 +15,16 @@ class LSGAN:
         self.generator_losses     = []
         self.discriminator_losses = []
 
+    def reset_GAN(self):
+        self.Generator.apply(weights_xavier_init)
+        self.Discriminator.apply(weights_xavier_init)
+
 
 class Generator(nn.Module):
-    def __init__(self, input_size, hidden_size, output_size):
+    def __init__(self, input_size, hidden_size, output_size, map_scale):
         super().__init__()
-        self.noise_size       = input_size
+        self.noise_size = input_size
+        self.map_scale  = map_scale
 
         self.layer1 = nn.Sequential(
             nn.Linear(input_size, hidden_size),
@@ -35,10 +41,10 @@ class Generator(nn.Module):
             self.layer2
         )
 
-        #self.apply(weights_xavier_init)
+        self.apply(weights_xavier_init)
 
     def forward(self, input):
-        output = self.all_layers(input)
+        output = self.all_layers(input) * self.map_scale
         return output
 
 
@@ -60,7 +66,7 @@ class Discriminator(nn.Module):
             self.layer2
         )
 
-        #self.apply(weights_xavier_init)
+        self.apply(weights_xavier_init)
 
     def forward(self, input):
         output = self.all_layers(input)
