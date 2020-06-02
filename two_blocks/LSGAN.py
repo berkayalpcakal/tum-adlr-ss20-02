@@ -35,7 +35,7 @@ class Generator(nn.Module):
             self.layer2
         )
 
-        self.apply(weights_xavier_init)
+        #self.apply(weights_xavier_init)
 
     def forward(self, input):
         output = self.all_layers(input)
@@ -60,7 +60,7 @@ class Discriminator(nn.Module):
             self.layer2
         )
 
-        self.apply(weights_xavier_init)
+        #self.apply(weights_xavier_init)
 
     def forward(self, input):
         output = self.all_layers(input)
