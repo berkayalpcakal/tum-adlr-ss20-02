@@ -1,4 +1,4 @@
-from GenerativeGoalLearning import initialize_GAN, train_GAN, sample
+from GenerativeGoalLearning import train_GAN
 from LSGAN import LSGAN
 
 import torch
@@ -55,7 +55,7 @@ for i in range(200):
     labels    = label_goals(gan_goals, target_point)
     
     print("Iteration: {},   Number of generated positive samples: {}/{}".format(i, np.sum(labels), num_samples_goalGAN_goals))
-    if np.sum(labels) < 5:
+    if np.sum(labels) < 1:
         print(".. reinitializing GAN")
         goalGAN.reset_GAN()
         continue

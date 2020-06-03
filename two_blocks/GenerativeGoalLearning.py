@@ -7,7 +7,6 @@ import gym
 import numpy as np
 import torch
 from torch import nn, Tensor
-from torch.autograd import Variable
 
 from two_blocks_env.collider_env import Observation, SettableGoalEnv, distance, dim_goal
 from LSGAN import LSGAN
@@ -78,33 +77,28 @@ def label_goals(returns: Returns) -> Sequence[int]:
 
 
 def train_GAN(goals: Goals, labels: Sequence[int], goalGAN):
+    y: Tensor = torch.Tensor(labels).reshape(len(labels), 1)
+    D = goalGAN.Discriminator.forward
+    G = goalGAN.Generator.forward
 
-    for i in range(len(labels)):
+    def D_loss_vec(z: Tensor) -> Tensor:
+        return y*(D(goals)-1)**2 + (1-y)*(D(goals)+1)**2 +(D(G(z))+1)**2
 
+    gradient_steps = 200
+    for _ in range(gradient_steps):
         ### Train Discriminator ###
+        zs = torch.randn(len(labels), goalGAN.Generator.noise_size)
         goalGAN.Discriminator.zero_grad()
-
-        z = Variable(Tensor(  np.random.normal(0, 1, goalGAN.Generator.noise_size)  ))
-
-        discriminator_loss = \
-            Tensor([labels[i]])     * ( goalGAN.Discriminator.forward(goals[i]) - Tensor([1]) )**2 + \
-            (1-Tensor([labels[i]])) * ( goalGAN.Discriminator.forward(goals[i]) + Tensor([1]) )**2 + \
-            ( goalGAN.Discriminator.forward( goalGAN.Generator.forward(z) ) + Tensor([1]))**2
-
-        discriminator_loss.backward()
+        D_loss = torch.sum(D_loss_vec(zs))
+        D_loss.backward()
         goalGAN.D_Optimizer.step()
 
         ### Train Generator ###
+        zs = torch.randn(len(labels), goalGAN.Generator.noise_size)
         goalGAN.Generator.zero_grad()
-
-        z = Variable(Tensor(  np.random.normal(0, 1, goalGAN.Generator.noise_size)  ))
-
-        generator_loss = \
-            goalGAN.Discriminator.forward(goalGAN.Generator.forward(z))**2
-
-        generator_loss.backward()
+        G_loss = torch.sum(D(G(zs))**2)
+        G_loss.backward()
         goalGAN.G_Optimizer.step()
-
 
     return goalGAN
 
