@@ -6,4 +6,4 @@ ppo2_collider.zip
 videos/
 *.egg-info/
 profiling*.png
-results/
+all-results/
