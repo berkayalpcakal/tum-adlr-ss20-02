@@ -16,8 +16,8 @@ D_Hidden_Size = 128
 
 num_samples_goalGAN_goals  = 200
 map_length = 10
-target_point = torch.Tensor(np.array([-3., 3]))
-eps = 1
+target_point = torch.Tensor(np.random.random(size=(2)) * 2 * map_length - map_length)
+eps = 0.3
 ####################
 
 

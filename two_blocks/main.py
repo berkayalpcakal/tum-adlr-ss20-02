@@ -32,7 +32,7 @@ goals_old = torch.empty(0, dim_goal(env))
 
 for i in range(iterations):
     z         = torch.randn(size=(num_samples_goalGAN_goals, goalGAN.Generator.noise_size))
-    gan_goals = goalGAN.Generator.forward(z).detach() * float(env.observation_space["desired_goal"].high[0])
+    gan_goals = goalGAN.Generator.forward(z).detach()
     goals     = torch.cat([gan_goals, sample(goals_old, k=num_samples_from_old_goals)])
     π         = update_policy(goals, π, env)
     returns   = evaluate_policy(goals, π, env)
