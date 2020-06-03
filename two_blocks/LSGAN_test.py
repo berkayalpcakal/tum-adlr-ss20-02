@@ -37,44 +37,44 @@ def plot_goals(goals, target):
     plt.show()
 
 
+def main():
+    goalGAN = LSGAN(generator_input_size=G_Input_Size,
+                        generator_hidden_size=G_Hidden_Size,
+                        generator_output_size=2,
+                        discriminator_input_size=2,
+                        discriminator_hidden_size=D_Hidden_Size,
+                        discriminator_output_size=1,
+                        map_scale=map_length)
+
+    ### training
+    for i in range(200):
+        z         = torch.randn(size=(num_samples_goalGAN_goals, goalGAN.Generator.noise_size))
+        gan_goals = goalGAN.Generator.forward(z).detach()
+        labels    = label_goals(gan_goals, target_point)
+
+        print("Iteration: {},   Number of generated positive samples: {}/{}".format(i, np.sum(labels), num_samples_goalGAN_goals))
+        if np.sum(labels) < 1:
+            print(".. reinitializing GAN")
+            goalGAN.reset_GAN()
+            continue
+
+        if np.sum(labels) > num_samples_goalGAN_goals * 0.95:
+            print(".. training done")
+            break
+
+        #plot_goals(gan_goals,target_point)
+
+        goalGAN   = train_GAN(gan_goals, labels, goalGAN)
 
 
+    ### validation
+    for i in range(5):
+        z         = torch.randn(size=(num_samples_goalGAN_goals, goalGAN.Generator.noise_size))
+        gan_goals = goalGAN.Generator.forward(z).detach()
+        labels    = label_goals(gan_goals, target_point)
 
-goalGAN = LSGAN(generator_input_size=G_Input_Size,
-                    generator_hidden_size=G_Hidden_Size,
-                    generator_output_size=2,
-                    discriminator_input_size=2,
-                    discriminator_hidden_size=D_Hidden_Size,
-                    discriminator_output_size=1,
-                    map_scale=map_length) 
+        print("Number of generated positive samples: {}/{}".format(np.sum(labels), num_samples_goalGAN_goals))
+        plot_goals(gan_goals,target_point)
 
-### training
-for i in range(200):
-    z         = torch.randn(size=(num_samples_goalGAN_goals, goalGAN.Generator.noise_size))
-    gan_goals = goalGAN.Generator.forward(z).detach()    
-    labels    = label_goals(gan_goals, target_point)
-    
-    print("Iteration: {},   Number of generated positive samples: {}/{}".format(i, np.sum(labels), num_samples_goalGAN_goals))
-    if np.sum(labels) < 1:
-        print(".. reinitializing GAN")
-        goalGAN.reset_GAN()
-        continue
-
-    if np.sum(labels) > num_samples_goalGAN_goals * 0.95:
-        print(".. training done")
-        break
-    
-    #plot_goals(gan_goals,target_point)
-
-    goalGAN   = train_GAN(gan_goals, labels, goalGAN)
-
-
-### validation
-for i in range(5):
-    z         = torch.randn(size=(num_samples_goalGAN_goals, goalGAN.Generator.noise_size))
-    gan_goals = goalGAN.Generator.forward(z).detach()   
-    labels    = label_goals(gan_goals, target_point)
-        
-    print("Number of generated positive samples: {}/{}".format(np.sum(labels), num_samples_goalGAN_goals))
-    plot_goals(gan_goals,target_point)
-
+if __name__ == '__main__':
+    main()
