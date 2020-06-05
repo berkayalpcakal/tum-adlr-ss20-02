@@ -56,13 +56,13 @@ class ToyLab(SettableGoalEnv):
         self._step_num += 1
         self._cur_pos = sim_step(cur_pos=self._cur_pos, action=action)
         obs = self._make_obs()
-        is_success = _are_close(obs.achieved_goal, obs.desired_goal)
+        is_success = _is_success(obs.achieved_goal, obs.desired_goal)
         done = (is_success or self._step_num % self._max_episode_len == 0)
         reward = self.compute_reward(obs.achieved_goal, obs.desired_goal, {})
         return obs, reward, done, {"is_success": float(is_success)}
 
     def compute_reward(self, achieved_goal: np.ndarray, desired_goal: np.ndarray, info):
-        return 0 if _are_close(achieved_goal, desired_goal) else -1
+        return 0 if _is_success(achieved_goal, desired_goal) else -1
 
     def reset(self) -> Observation:
         super().reset()
@@ -110,6 +110,18 @@ def sim_step(cur_pos: np.ndarray, action: np.ndarray) -> np.ndarray:
         x2 = max(0, x2)
 
     return np.clip(np.array([x1, x2]), a_min=_labyrinth_lower_bound, a_max=_labyrinth_upper_bound)
+
+
+def _is_success(g1: np.ndarray, g2: np.ndarray) -> bool:
+    return _are_on_same_side_of_wall(g1, g2) and _are_close(g1, g2)
+
+
+def _are_on_same_side_of_wall(pos1: np.ndarray, pos2: np.ndarray) -> bool:
+    return _is_above_wall(pos1) == _is_above_wall(pos2)
+
+
+def _is_above_wall(pos: np.ndarray) -> bool:
+    return pos[1] > 0
 
 
 def _are_close(x1: np.ndarray, x2: np.ndarray) -> bool:
