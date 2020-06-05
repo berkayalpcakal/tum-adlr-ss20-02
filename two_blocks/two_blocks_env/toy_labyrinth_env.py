@@ -73,17 +73,20 @@ class ToyLab(SettableGoalEnv):
 
     def render(self, mode='human'):
         if self._plot is None:
+            plt.ion()
             fig = plt.figure()
             ax = fig.add_subplot(111)
             ax.plot(*labyrinth_corners.T)
             s1 = ax.scatter(*self._cur_pos, c="orange")
             s2 = ax.scatter(*self._goal, c="green")
+            fig.show()
             self._plot = fig, s1, s2
         else:
             fig, s1, s2 = self._plot
             s1.set_offsets(self._cur_pos)
             s2.set_offsets(self._goal)
-        fig.show()
+        fig.canvas.draw()
+        fig.canvas.flush_events()
 
 
 def sim_step(cur_pos: np.ndarray, action: np.ndarray) -> np.ndarray:
@@ -105,8 +108,10 @@ def _are_close(x1: np.ndarray, x2: np.ndarray) -> bool:
 
 if __name__ == '__main__':
     env = ToyLab()
-    for _ in range(10):
+    env.reset()
+    env.render()
+    for _ in range(100):
+        time.sleep(0.2)
         action = env.action_space.sample()
         env.step(action)
         env.render()
-        time.sleep(0.5)

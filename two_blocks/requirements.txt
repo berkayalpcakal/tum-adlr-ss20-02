@@ -2,3 +2,5 @@ gym
 pybullet
 numpy
 pytest
+stable-baselines
+click
