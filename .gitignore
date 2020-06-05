@@ -7,3 +7,4 @@ videos/
 *.egg-info/
 profiling*.png
 all-results/
+backup/

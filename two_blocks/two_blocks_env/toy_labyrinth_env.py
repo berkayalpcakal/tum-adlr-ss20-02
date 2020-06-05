@@ -1,8 +1,10 @@
 import time
+from typing import Sequence
 
 import gym
 import matplotlib.pyplot as plt
 import numpy as np
+from sklearn.preprocessing import MinMaxScaler
 
 from two_blocks_env.collider_env import Observation, SettableGoalEnv
 
@@ -23,6 +25,13 @@ _labyrinth_lower_bound = np.array([-middle_wall_len, -sidewall_height / 2])
 _labyrinth_upper_bound = np.array([sidewall_height / 2, sidewall_height / 2])
 _labyrinth_space = gym.spaces.Box(low=_labyrinth_lower_bound, high=_labyrinth_upper_bound)
 
+scaler = MinMaxScaler(feature_range=(-1, 1))
+scaler.fit([_labyrinth_lower_bound, _labyrinth_upper_bound])
+
+
+def _normalize(goal: Sequence[float]) -> np.ndarray:
+    return scaler.transform(goal[np.newaxis])[0]
+
 
 class ToyLab(SettableGoalEnv):
 
@@ -34,6 +43,7 @@ class ToyLab(SettableGoalEnv):
     action_space = gym.spaces.Box(low=-1, high=1, shape=(2,))
 
     def __init__(self, max_episode_len: int = 40):
+        super().__init__()
         self._max_episode_len = max_episode_len
         self._cur_pos = _initial_pos
         self._step_num = 0
@@ -63,8 +73,8 @@ class ToyLab(SettableGoalEnv):
 
     def _make_obs(self) -> Observation:
         return Observation(observation=np.empty(0),
-                           achieved_goal=self._cur_pos,
-                           desired_goal=self._goal)
+                           achieved_goal=_normalize(self._cur_pos),
+                           desired_goal=_normalize(self._goal))
 
     def set_goal(self, goal: np.ndarray) -> None:
         assert isinstance(goal, np.ndarray)
@@ -103,7 +113,7 @@ def sim_step(cur_pos: np.ndarray, action: np.ndarray) -> np.ndarray:
 
 
 def _are_close(x1: np.ndarray, x2: np.ndarray) -> bool:
-    return np.linalg.norm(x1 - x2) < 1
+    return np.linalg.norm(x1 - x2)**2 < 0.1
 
 
 if __name__ == '__main__':
