@@ -3,9 +3,9 @@ from GenerativeGoalLearning import initialize_GAN, update_and_eval_policy, \
 from ppo_agent import PPOAgent
 from two_blocks_env.collider_env import dim_goal
 import numpy as np
-import matplotlib.pyplot as plt
 import torch
-from two_blocks_env.toy_labyrinth_env import ToyLab, _denormalize
+from two_blocks_env.toy_labyrinth_env import ToyLab
+from utils import render_goals_with_env
 
 """
 Algorithm in the GAN paper, Florensa 2018 
@@ -40,6 +40,7 @@ for i in range(iterations):
     z          = torch.randn(size=(num_samples_goalGAN_goals, goalGAN.Generator.noise_size))
     gan_goals  = goalGAN.Generator.forward(z).detach()
     goals      = torch.cat([gan_goals, sample(goals_old, k=num_samples_from_old_goals)])
+    goals_plot = render_goals_with_env(goals, goals_plot, env)
     π, returns = update_and_eval_policy(goals, π, env)
     print(f"Average reward: {(sum(returns) / len(returns)):.2f}")
     labels     = label_goals(returns)
@@ -47,13 +48,3 @@ for i in range(iterations):
     assert not all([lab == 0 for lab in labels]), "All labels are 0"
     goalGAN    = train_GAN(goals, labels, goalGAN)
     goals_old  = goals
-
-    # Plotting
-    data_to_plot = [_denormalize(g) for g in goals]
-    if goals_plot is None:
-        goals_plot = env._plot[0].get_axes()[0].scatter(*zip(*data_to_plot))
-        plt.xlim((-13, 5))
-        plt.ylim((-5, 5))
-    else:
-        goals_plot.set_offsets(data_to_plot)
-    env.render()
