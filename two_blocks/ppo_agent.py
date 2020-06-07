@@ -1,7 +1,10 @@
+import warnings
 from typing import Callable
 import numpy as np
 from gym.wrappers import FlattenObservation
-from stable_baselines import PPO2
+with warnings.catch_warnings():
+    warnings.simplefilter(action="ignore", category=FutureWarning)
+    from stable_baselines import PPO2
 from GenerativeGoalLearning import Agent
 from two_blocks_env.collider_env import Observation, SettableGoalEnv
 

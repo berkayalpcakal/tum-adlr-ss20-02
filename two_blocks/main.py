@@ -1,3 +1,4 @@
+import warnings
 from GenerativeGoalLearning import initialize_GAN, update_and_eval_policy, \
     label_goals, train_GAN, sample
 from ppo_agent import PPOAgent
@@ -32,7 +33,7 @@ env  = ToyLab()
 env.render()
 π         = PPOAgent(env=env)
 goalGAN   = initialize_GAN(env=env)
-goals_old = torch.Tensor([env.starting_obs]) + torch.randn(10, dim_goal(env))*0.1
+goals_old = torch.Tensor([env.starting_obs]) + torch.randn(num_samples_from_old_goals, dim_goal(env))*0.1
 
 goals_plot = None
 for i in range(iterations):
@@ -45,6 +46,6 @@ for i in range(iterations):
     print(f"Average reward: {(sum(returns) / len(returns)):.2f}")
     labels     = label_goals(returns)
     print(f"Percentage of 0 vs 1 labels: {[round(n, 2) for n in (np.bincount(labels) / len(labels))]}")
-    assert not all([lab == 0 for lab in labels]), "All labels are 0"
+    if all([lab == 0 for lab in labels]): warnings.warn("All labels are 0")
     goalGAN    = train_GAN(goals, labels, goalGAN)
     goals_old  = goals
