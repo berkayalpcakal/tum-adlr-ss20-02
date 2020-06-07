@@ -3,11 +3,10 @@ import os
 import click
 from stable_baselines.common import BaseRLModel
 
-from stable_baselines.common.callbacks import CheckpointCallback, CallbackList
-from stable_baselines import HER, DDPG, SAC, PPO2
+from stable_baselines.common.callbacks import CheckpointCallback
+from stable_baselines import HER, SAC, PPO2
 
 from GenerativeGoalLearning import trajectory
-from two_blocks_env.labyrinth_env import Labyrinth
 from two_blocks_env.toy_labyrinth_env import ToyLab
 from utils import Dirs
 
@@ -16,7 +15,6 @@ def train(model_class: type(BaseRLModel), dirs: Dirs):
     num_timesteps = 100000
     num_checkpoints = 4
     env = ToyLab()
-    cb = CheckpointCallback(save_freq=num_timesteps//num_checkpoints, save_path=dirs.models, name_prefix=dirs.prefix)
     options = {"env": env, "tensorboard_log": dirs.tensorboard}
     if os.path.isdir(dirs.models):
         model = model_class.load(load_path=dirs.best_model, **options)
@@ -24,6 +22,8 @@ def train(model_class: type(BaseRLModel), dirs: Dirs):
         if model_class == HER:
             options.update(model_class=SAC)
         model = model_class(policy='MlpPolicy', verbose=1, **options)
+
+    cb = CheckpointCallback(save_freq=num_timesteps//num_checkpoints, save_path=dirs.models, name_prefix=dirs.prefix)
     model.learn(total_timesteps=num_timesteps, callback=cb)
 
 
