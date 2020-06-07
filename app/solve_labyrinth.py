@@ -7,8 +7,8 @@ from stable_baselines.common.callbacks import CheckpointCallback
 from stable_baselines import HER, SAC, PPO2
 
 from GenerativeGoalLearning import trajectory
+from app_utils import Dirs
 from two_blocks_env.toy_labyrinth_env import ToyLab
-from utils import Dirs
 
 
 def train(model_class: type(BaseRLModel), dirs: Dirs):

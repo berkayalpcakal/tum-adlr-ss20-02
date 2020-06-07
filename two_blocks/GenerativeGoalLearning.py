@@ -107,16 +107,17 @@ def train_GAN(goals: Goals, labels: Sequence[int], goalGAN):
 
 
 def trajectory(π: Agent, env: SettableGoalEnv, goal: np.ndarray = None,
-               sleep_secs: float = 1/240):
-    obs = env.reset()
+               sleep_secs: float = 1/240, render = False):
     if goal is not None:
         env.set_possible_goals(goal[np.newaxis])
+    obs = env.reset()
 
     for t in count():
         action = π(obs)
         next_obs, reward, done, info = env.step(action)
         time.sleep(sleep_secs)
-        env.render()
+        if render:
+            env.render()
 
         if t % 10 == 0:
             print(f"achieved goal: {obs.achieved_goal.T},"

@@ -1,7 +1,9 @@
 import numpy as np
+import pytest
 
 from two_blocks_env.collider_env import ColliderEnv
 from GenerativeGoalLearning import trajectory, null_agent
+from two_blocks_env.toy_labyrinth_env import ToyLab
 
 NULL_ACTION = np.zeros(shape=ColliderEnv.action_space.shape)
 
@@ -33,8 +35,12 @@ def test_restart_reset_steps():
     assert not done(env.step(NULL_ACTION))
 
 
-def test_env_trajectory():
-    env = ColliderEnv(visualize=False, max_episode_len=10)
+@pytest.mark.parametrize("env", [ColliderEnv(visualize=False, max_episode_len=10),
+                                 ToyLab(max_episode_len=10)])
+def test_env_trajectory(env):
     agent = null_agent(action_space=env.action_space)
+    assert len(list(trajectory(π=agent, env=env))) == 10
+
     goal = env.observation_space["desired_goal"].high
     assert len(list(trajectory(π=agent, env=env, goal=goal))) == 10
+

@@ -72,7 +72,7 @@ class ToyLab(SettableGoalEnv):
         reward = self.compute_reward(obs.achieved_goal, obs.desired_goal, {})
         is_success = reward == max(self.reward_range)
         done = (is_success or self._step_num % self.max_episode_len == 0)
-        if done:
+        if done and len(self._successes_per_goal) > 0:
             self._successes_per_goal[tuple(self._normalized_goal)].append(is_success)
         return obs, reward, done, {"is_success": float(is_success)}
 
