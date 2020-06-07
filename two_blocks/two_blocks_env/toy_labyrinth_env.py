@@ -113,13 +113,13 @@ class ToyLab(SettableGoalEnv):
             ax = fig.add_subplot(111)
             ax.plot(*labyrinth_corners.T)
             s1 = ax.scatter(*self._cur_pos, c="orange")
-            s2 = ax.scatter(*self._normalized_goal, c="green")
+            s2 = ax.scatter(*_denormalize(self._normalized_goal), c="green")
             fig.show()
             self._plot = fig, s1, s2
         else:
             fig, s1, s2 = self._plot
             s1.set_offsets(self._cur_pos)
-            s2.set_offsets(self._normalized_goal)
+            s2.set_offsets(_denormalize(self._normalized_goal))
         fig.canvas.draw()
         fig.canvas.flush_events()
 

@@ -32,7 +32,7 @@ def viz(model_class: type(BaseRLModel), dirs: Dirs):
     model = model_class.load(load_path=dirs.best_model, env=env)
     print(f"Loaded model {dirs.best_model}")
     agent = lambda obs: model.predict(obs, deterministic=True)[0]
-    run = lambda g: sum(1 for _ in trajectory(agent, env, goal=g, sleep_secs=0.1))
+    run = lambda g: sum(1 for _ in trajectory(agent, env, goal=g, sleep_secs=0.1, render=True, print_every=1))
     while True:
         env.render()
         g = env.observation_space["desired_goal"].sample()
