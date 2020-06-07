@@ -1,5 +1,4 @@
 import os
-from pathlib import Path
 
 import click
 from stable_baselines.common import BaseRLModel
@@ -10,19 +9,7 @@ from stable_baselines import HER, DDPG, SAC, PPO2
 from GenerativeGoalLearning import trajectory
 from two_blocks_env.labyrinth_env import Labyrinth
 from two_blocks_env.toy_labyrinth_env import ToyLab
-from utils import latest_model
-
-
-class Dirs:
-    def __init__(self, experiment_name: str):
-        self.prefix = experiment_name
-        results = Path("../all-results")/experiment_name
-        self.models = results/"ckpts"
-        self.tensorboard = results/"tensorboard"
-
-    @property
-    def best_model(self):
-        return self.models/latest_model(self.models)
+from utils import Dirs
 
 
 def train(model_class: type(BaseRLModel), dirs: Dirs):

@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 from typing import Sequence, Tuple, Callable
 import gym
 import numpy as np
@@ -50,3 +51,15 @@ def vector_field(func: Callable[[float, float], np.ndarray], space: gym.spaces.B
     X, Y = np.mgrid[low_x:high_x:(high_x-low_x)/20, low_y:high_y:(high_y-low_y)/20]
     U, V = np.array([func(*k) for c in zip(X, Y) for k in zip(*c)]).T
     return X, Y, U.reshape(X.shape), V.reshape(X.shape)
+
+
+class Dirs:
+    def __init__(self, experiment_name: str):
+        self.prefix = experiment_name
+        results = Path("../all-results")/experiment_name
+        self.models = results/"ckpts"
+        self.tensorboard = results/"tensorboard"
+
+    @property
+    def best_model(self):
+        return self.models/latest_model(self.models)
