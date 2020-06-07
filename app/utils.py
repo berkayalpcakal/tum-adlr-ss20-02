@@ -56,10 +56,11 @@ def vector_field(func: Callable[[float, float], np.ndarray], space: gym.spaces.B
 class Dirs:
     def __init__(self, experiment_name: str):
         self.prefix = experiment_name
-        results = Path("../all-results")/experiment_name
-        self.models = results/"ckpts"
-        self.tensorboard = results/"tensorboard"
+        this_fpath = os.path.realpath(os.path.join(os.getcwd(), os.path.dirname(__file__)))
+        results = Path(this_fpath)/"../all-results"/experiment_name
+        self.models = str(results/"ckpts")
+        self.tensorboard = str(results/"tensorboard")
 
     @property
     def best_model(self):
-        return self.models/latest_model(self.models)
+        return str(Path(self.models)/latest_model(self.models))
