@@ -1,12 +1,12 @@
-import random
 import time
+from itertools import count
 from typing import Callable
 from typing import Sequence, Tuple
 
 import gym
 import numpy as np
 import torch
-from torch import nn, Tensor
+from torch import Tensor
 
 from two_blocks_env.collider_env import Observation, SettableGoalEnv, distance, dim_goal
 from LSGAN import LSGAN
@@ -14,15 +14,22 @@ from LSGAN import LSGAN
 #### PARAMETERS ####
 Rmin = 0.1
 Rmax = 0.9
-max_episode_length = 500
 
 G_Input_Size  = 4       # noise dim, somehow noise size is defined as 4 in their implementation for ant_gan experiment
 G_Hidden_Size = 256
 D_Hidden_Size = 128
 ####################
 
+Goals = Tensor
+Returns = Sequence[float]
 
-Agent = Callable[[Observation], np.ndarray]
+
+class Agent:
+    def __call__(self, obs: Observation) -> np.ndarray:
+        raise NotImplementedError
+
+    def train(self, timesteps: int, callback: Callable = None) -> None:
+        raise NotImplementedError
 
 
 def random_agent(action_space: gym.spaces.Space) -> Agent:
@@ -44,11 +51,7 @@ def sample(t: Tensor, k: int) -> Tensor:
     return t[indices]
 
 
-Goals = Tensor
-Returns = Sequence[float]
-
-
-def initialize_GAN(env: gym.GoalEnv) -> Tuple[nn.Module, nn.Module]:
+def initialize_GAN(env: gym.GoalEnv) -> LSGAN:
     goalGAN = LSGAN(generator_input_size=G_Input_Size,
                     generator_hidden_size=G_Hidden_Size,
                     generator_output_size=dim_goal(env),
@@ -58,18 +61,15 @@ def initialize_GAN(env: gym.GoalEnv) -> Tuple[nn.Module, nn.Module]:
     return goalGAN
 
 
-def update_policy(goals: Goals, π: Agent, env: SettableGoalEnv) -> Agent:
-    """Placeholder update. Exemplary use of trajectory() below"""
-    for g in goals.numpy():
-        τ = trajectory(π=π, env=env, goal=g)
-        for (s, a, r, s2, done) in τ:
-            pass
-    return π
-
-
-def evaluate_policy(goals: Goals, π: Agent, env: SettableGoalEnv) -> Returns:
-    """Placeholder evaluation"""
-    return [random.random() for _ in goals]
+def update_and_eval_policy(goals: Goals, π: Agent, env: SettableGoalEnv) -> Tuple[Agent, Returns]:
+    env.set_possible_goals(goals.numpy())
+    env.reset()
+    π.train(timesteps=env.max_episode_len*len(goals)*5)
+    episode_successes_per_goal = env.get_successes_of_goals()
+    assert all(len(sucs) > 0 for g, sucs in episode_successes_per_goal.items()),\
+        "More steps are necessary to eval each goal at least once."
+    returns = [np.mean(episode_successes_per_goal[tuple(g)]) for g in goals.numpy()]
+    return π, returns
 
 
 def label_goals(returns: Returns) -> Sequence[int]:
@@ -111,9 +111,9 @@ def update_replay(goals: Goals) -> Goals:
 def trajectory(π: Agent, env: SettableGoalEnv, goal: np.ndarray = None, sleep_secs: float = 1/240):
     obs = env.reset()
     if goal is not None:
-        env.set_goal(goal)
+        env.set_possible_goals(goal[np.newaxis])
 
-    for t in range(max_episode_length):
+    for t in count():
         action = π(obs)
         next_obs, reward, done, info = env.step(action)
         time.sleep(sleep_secs)
@@ -125,9 +125,6 @@ def trajectory(π: Agent, env: SettableGoalEnv, goal: np.ndarray = None, sleep_s
                   f" distance: {distance(obs.achieved_goal, obs.desired_goal)},")
         if info.get("is_success"):
             print("SUCCESS!")
-        if t == (max_episode_length - 1):
-            print("REACHED MAXIMUM EPISODE LEN")
-            done = True
 
         yield obs, action, reward, next_obs, done
 

@@ -1,7 +1,9 @@
 import os
 import time
 from abc import ABC
-from typing import Sequence
+from itertools import cycle
+from typing import Sequence, Tuple, Mapping, List
+from collections import OrderedDict
 
 import numpy as np
 import pybullet
@@ -11,10 +13,13 @@ import gym
 from gym import spaces
 from pybullet_utils.bullet_client import BulletClient
 
+Goal = np.ndarray
+GoalHashable = Tuple[float]
 
-class Observation(dict):
-    def __init__(self, observation: np.ndarray, achieved_goal: np.ndarray,
-                 desired_goal: np.ndarray) -> None:
+
+class Observation(OrderedDict):
+    def __init__(self, observation: np.ndarray, achieved_goal: Goal,
+                 desired_goal: Goal) -> None:
         super().__init__(observation=observation, achieved_goal=achieved_goal,
                          desired_goal=desired_goal)
         self.observation = observation
@@ -23,7 +28,13 @@ class Observation(dict):
 
 
 class SettableGoalEnv(ABC, gym.GoalEnv):
-    def set_goal(self, goal: np.ndarray) -> None:
+    max_episode_len: int
+    starting_obs: np.ndarray
+
+    def set_possible_goals(self, goals: np.ndarray) -> None:
+        raise NotImplementedError
+
+    def get_successes_of_goals(self) -> Mapping[GoalHashable, List[bool]]:
         raise NotImplementedError
 
 
@@ -60,13 +71,16 @@ class ColliderEnv(SettableGoalEnv):
         self._target_ball = self._bullet.loadURDF(self._green_ball_fname, self._green_ball_initial_pos, useFixedBase=1)
 
         self._desired_goal = np.ones(2) * 5
-        self._max_episode_len = max_episode_len
+        self.max_episode_len = max_episode_len
         self._step_num = 0
+
+        self._possible_goals = None
+        self._successes_per_goal: Mapping[GoalHashable, List[bool]] = dict()
 
     def step(self, action: np.ndarray):
         assert self._action_is_valid(action), action
         self._step_num += 1
-        assert self._step_num <= self._max_episode_len
+        assert self._step_num <= self.max_episode_len
 
         for _ in range(10):
             if self._visualize:
@@ -76,7 +90,7 @@ class ColliderEnv(SettableGoalEnv):
 
         obs = self._get_obs()
         is_success = _goals_are_close(obs.achieved_goal, obs.desired_goal)
-        done = (is_success or self._step_num % self._max_episode_len == 0)
+        done = (is_success or self._step_num % self.max_episode_len == 0)
         reward = self.compute_reward(achieved_goal=obs.achieved_goal,
                                      desired_goal=obs.desired_goal, info={})
 
@@ -113,6 +127,11 @@ class ColliderEnv(SettableGoalEnv):
         assert self.observation_space["desired_goal"].contains(new_goal)
         _reset_object(self._bullet, self._target_ball, pos=[*new_goal, self._ball_radius])
         self._desired_goal = new_goal
+
+    def set_possible_goals(self, goals: np.ndarray) -> None:
+        assert goals.shape[1] == self.observation_space["desired_goal"].shape[0]
+        self._possible_goals = cycle(np.random.permutation(goals))
+        self._successes_per_goal = {tuple(g): [] for g in goals}
 
 
 def distance(x1: np.ndarray, x2: np.ndarray):

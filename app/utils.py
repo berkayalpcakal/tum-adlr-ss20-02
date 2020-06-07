@@ -64,3 +64,10 @@ class Dirs:
     @property
     def best_model(self):
         return str(Path(self.models)/latest_model(self.models))
+
+
+# For comparison
+def perfect_action(obs) -> np.ndarray:
+    ball_pos = obs[4:6]
+    target_pos = obs[6:8]
+    return (target_pos - ball_pos) / np.linalg.norm(target_pos - ball_pos)
