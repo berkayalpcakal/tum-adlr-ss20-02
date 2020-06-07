@@ -10,7 +10,7 @@ class PPOAgent(Agent):
     def __init__(self, env: SettableGoalEnv):
         self._env = env
         self._flat_env = FlattenObservation(env)
-        self._model = PPO2("MlpPolicy", env=self._flat_env, verbose=1)
+        self._model = PPO2("MlpPolicy", env=self._flat_env, verbose=0)
 
     def __call__(self, obs: Observation) -> np.ndarray:
         flat_obs = self._flat_env.observation(obs)

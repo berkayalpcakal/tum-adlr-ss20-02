@@ -12,6 +12,8 @@ from two_blocks_env.collider_env import Observation, SettableGoalEnv, distance, 
 from LSGAN import LSGAN
 
 #### PARAMETERS ####
+from utils import print_message
+
 Rmin = 0.1
 Rmax = 0.9
 
@@ -61,6 +63,7 @@ def initialize_GAN(env: gym.GoalEnv) -> LSGAN:
     return goalGAN
 
 
+@print_message("Training the policy on current goals")
 def update_and_eval_policy(goals: Goals, π: Agent, env: SettableGoalEnv) -> Tuple[Agent, Returns]:
     env.set_possible_goals(goals.numpy())
     env.reset()
@@ -75,7 +78,7 @@ def update_and_eval_policy(goals: Goals, π: Agent, env: SettableGoalEnv) -> Tup
 def label_goals(returns: Returns) -> Sequence[int]:
     return [int(Rmin <= r <= Rmax) for r in returns]
 
-
+@print_message("Training GAN on current goals")
 def train_GAN(goals: Goals, labels: Sequence[int], goalGAN):
     y: Tensor = torch.Tensor(labels).reshape(len(labels), 1)
     D = goalGAN.Discriminator.forward
@@ -103,12 +106,8 @@ def train_GAN(goals: Goals, labels: Sequence[int], goalGAN):
     return goalGAN
 
 
-def update_replay(goals: Goals) -> Goals:
-    """Placeholder update"""
-    return goals
-
-
-def trajectory(π: Agent, env: SettableGoalEnv, goal: np.ndarray = None, sleep_secs: float = 1/240):
+def trajectory(π: Agent, env: SettableGoalEnv, goal: np.ndarray = None,
+               sleep_secs: float = 1/240):
     obs = env.reset()
     if goal is not None:
         env.set_possible_goals(goal[np.newaxis])
