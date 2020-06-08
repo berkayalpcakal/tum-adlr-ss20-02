@@ -24,9 +24,9 @@ for i in iterations:
 
 #### PARAMETERS ####
 # The rest of the params are in goalGAN.py
-iterations                 = 100 #1000
-num_samples_goalGAN_goals  = 20
-num_samples_from_old_goals = 10
+iterations                 = 200 #1000
+num_samples_goalGAN_goals  = 60
+num_samples_from_old_goals = 30
 ####################
 
 env  = ToyLab()

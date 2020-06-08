@@ -19,7 +19,7 @@ Rmax = 0.9
 
 G_Input_Size  = 4       # noise dim, somehow noise size is defined as 4 in their implementation for ant_gan experiment
 G_Hidden_Size = 256
-D_Hidden_Size = 128
+D_Hidden_Size = 256
 ####################
 
 Goals = Tensor
@@ -87,18 +87,21 @@ def train_GAN(goals: Goals, labels: Sequence[int], goalGAN):
     def D_loss_vec(z: Tensor) -> Tensor:
         return y*(D(goals)-1)**2 + (1-y)*(D(goals)+1)**2 +(D(G(z))+1)**2
 
-    gradient_steps = 1
+    ### Train Discriminator ###
+    gradient_steps = 20
     for _ in range(gradient_steps):
-        ### Train Discriminator ###
         zs = torch.randn(len(labels), goalGAN.Generator.noise_size)
         goalGAN.Discriminator.zero_grad()
         D_loss = torch.sum(D_loss_vec(zs))
         D_loss.backward()
         goalGAN.D_Optimizer.step()
 
-        ### Train Generator ###
+    ### Train Generator ###
+    gradient_steps = 1
+    for _ in range(gradient_steps):
         zs = torch.randn(len(labels), goalGAN.Generator.noise_size)
         goalGAN.Generator.zero_grad()
+        
         G_loss = torch.sum(D(G(zs))**2)
         G_loss.backward()
         goalGAN.G_Optimizer.step()
