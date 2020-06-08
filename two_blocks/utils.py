@@ -18,6 +18,16 @@ def print_message(msg: str):
 
 def render_goals_with_env(goals, returns, plot, env: SettableGoalEnv):
     # Plotting
+    denormalized_goals = [_denormalize(g) for g in goals]
+
+    if plot is None:
+        plot = env._plot[0].get_axes()[0].scatter(*zip(*denormalized_goals))
+    else:
+        plot.set_offsets(denormalized_goals)
+    env.render()
+    return plot
+
+def save_goals_plot(goals, returns, idx, env: SettableGoalEnv):
     denormalized_goals = np.array([_denormalize(g) for g in goals])
 
     rewards = np.array(returns)
@@ -29,13 +39,14 @@ def render_goals_with_env(goals, returns, plot, env: SettableGoalEnv):
     high_reward_goals = list(denormalized_goals[high_reward_idx])
     goid_reward_goals = list(denormalized_goals[goid_reward_idx])
 
-    if plot is None:
-        plot = env._plot[0].get_axes()[0].scatter(*zip(*low_reward_goals), c=['red'])
-        plot = env._plot[0].get_axes()[0].scatter(*zip(*high_reward_goals), c=['green'])
-        plot = env._plot[0].get_axes()[0].scatter(*zip(*goid_reward_goals), c=['blue'])
-#        plt.xlim((-13, 5))
-#        plt.ylim((-5, 5))
-    else:
-        plot.set_offsets(list(denormalized_goals))
-    env.render()
-    return plot
+    fig = plt.figure()
+    ax = plt.gca()
+    ax.plot(*env._labyrinth_corners.T)
+
+    # if plot is None:
+    if len(low_reward_goals) > 0:  ax.scatter(*zip(*low_reward_goals), c=['red'])
+    if len(high_reward_goals) > 0: ax.scatter(*zip(*high_reward_goals), c=['green'])
+    if len(goid_reward_goals) > 0: ax.scatter(*zip(*goid_reward_goals), c=['blue']) 
+
+    plt.savefig("goals_{}.png".format(idx))   
+    plt.close(fig)

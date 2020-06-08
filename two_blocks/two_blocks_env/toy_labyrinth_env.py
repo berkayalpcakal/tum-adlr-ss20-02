@@ -57,6 +57,7 @@ class ToyLab(SettableGoalEnv):
         self._normalized_goal = self._sample_new_goal()
         self._successes_per_goal: Mapping[GoalHashable, List[bool]] = dict()
         self._plot = None
+        self._labyrinth_corners = labyrinth_corners
 
     def _sample_new_goal(self) -> Goal:
         if self._possible_normalized_goals is None:
