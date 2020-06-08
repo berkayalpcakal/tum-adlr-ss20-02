@@ -44,7 +44,7 @@ class Generator(nn.Module):
         self.apply(weights_xavier_init)
 
     def forward(self, input):
-        output = self.all_layers(input) * self.map_scale
+        output = self.all_layers(input) #* self.map_scale
         return output
 
 

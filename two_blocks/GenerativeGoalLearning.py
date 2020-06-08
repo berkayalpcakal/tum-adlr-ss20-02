@@ -87,7 +87,7 @@ def train_GAN(goals: Goals, labels: Sequence[int], goalGAN):
     def D_loss_vec(z: Tensor) -> Tensor:
         return y*(D(goals)-1)**2 + (1-y)*(D(goals)+1)**2 +(D(G(z))+1)**2
 
-    gradient_steps = 200
+    gradient_steps = 1
     for _ in range(gradient_steps):
         ### Train Discriminator ###
         zs = torch.randn(len(labels), goalGAN.Generator.noise_size)
