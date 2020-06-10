@@ -1,4 +1,5 @@
 import os
+from itertools import tee
 from pathlib import Path
 from typing import Sequence, Tuple, Callable
 import gym
@@ -71,3 +72,9 @@ def perfect_action(obs) -> np.ndarray:
     ball_pos = obs[4:6]
     target_pos = obs[6:8]
     return (target_pos - ball_pos) / np.linalg.norm(target_pos - ball_pos)
+
+def pairwise(iterable):
+    "s -> (s0,s1), (s1,s2), (s2, s3), ..."
+    a, b = tee(iterable)
+    next(b, None)
+    return zip(a, b)
