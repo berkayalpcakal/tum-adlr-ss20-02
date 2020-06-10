@@ -8,3 +8,4 @@ videos/
 profiling*.png
 all-results/
 backup/
+.ipynb_checkpoints/
