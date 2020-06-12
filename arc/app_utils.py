@@ -68,10 +68,11 @@ class Dirs:
 
 
 # For comparison
-def perfect_action(obs) -> np.ndarray:
-    ball_pos = obs[4:6]
-    target_pos = obs[6:8]
-    return (target_pos - ball_pos) / np.linalg.norm(target_pos - ball_pos)
+def perfect_action(obs: Observation) -> np.ndarray:
+    return norm(obs.desired_goal - obs.desired_goal)
+
+def norm(vector: np.ndarray) -> np.ndarray:
+    return vector / np.linalg.norm(vector)
 
 def pairwise(iterable):
     "s -> (s0,s1), (s1,s2), (s2, s3), ..."

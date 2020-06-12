@@ -46,11 +46,11 @@ class ToyLab(SettableGoalEnv):
     })
     action_space = gym.spaces.Box(low=-1, high=1, shape=(2,))
     reward_range = (-1, 0)
+    starting_obs = _normalize(_initial_pos)  # normalized because public
 
-    def __init__(self, max_episode_len: int = 80, seed = 0):
+    def __init__(self, max_episode_len: int = 80, seed=0):
         super().__init__()
         self.max_episode_len = max_episode_len
-        self.starting_obs = _normalize(_initial_pos)  # normalized because public
         self._cur_pos = _initial_pos
         self._step_num = 0
         self._possible_normalized_goals = None
