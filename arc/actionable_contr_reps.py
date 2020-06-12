@@ -20,7 +20,7 @@ from two_blocks_env.toy_labyrinth_env import ToyLab
 from torch import nn
 from torch import Tensor
 from torch.distributions import MultivariateNormal, Distribution
-from torch.distributions.kl import kl_divergence
+from torch.distributions.kl import kl_divergence as KL
 import torch.nn.functional as F
 
 def sac_agent(model: HER, env: gym.Env) -> Tuple[Agent, Callable]:
@@ -77,7 +77,7 @@ def Dact(g1: np.ndarray, g2: np.ndarray, D_: Dataset) -> Tensor:
     obss_s2 = copy_and_replace_goal(obss=random.sample(D_, k=num_s_samples), goal=g2)
     N2s = gaussians_at(obss_s2)
 
-    kls = [kl_divergence(N1, N2) for N1, N2 in zip(N1s, N2s)]
+    kls = [KL(N1, N2) + KL(N2, N1) for N1, N2 in zip(N1s, N2s)]
     return torch.mean(Tensor(kls))
 
 

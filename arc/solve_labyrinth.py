@@ -12,7 +12,7 @@ from two_blocks_env.toy_labyrinth_env import ToyLab
 
 
 def train(model_class: type(BaseRLModel), dirs: Dirs):
-    num_timesteps = 100000
+    num_timesteps = 200000
     num_checkpoints = 4
     env = ToyLab()
     options = {"env": env, "tensorboard_log": dirs.tensorboard}
