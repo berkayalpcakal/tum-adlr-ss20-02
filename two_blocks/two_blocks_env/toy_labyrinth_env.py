@@ -47,7 +47,7 @@ class ToyLab(SettableGoalEnv):
     action_space = gym.spaces.Box(low=-1, high=1, shape=(2,))
     reward_range = (-1, 0)
 
-    def __init__(self, max_episode_len: int = 80):
+    def __init__(self, max_episode_len: int = 80, seed = 0):
         super().__init__()
         self.max_episode_len = max_episode_len
         self.starting_obs = _normalize(_initial_pos)  # normalized because public
@@ -55,6 +55,7 @@ class ToyLab(SettableGoalEnv):
         self._step_num = 0
         self._possible_normalized_goals = None
         self._normalized_goal = self._sample_new_goal()
+        self.seed(seed)
         self._successes_per_goal: Mapping[GoalHashable, List[bool]] = dict()
         self._plot = None
         self._labyrinth_corners = labyrinth_corners
@@ -106,6 +107,10 @@ class ToyLab(SettableGoalEnv):
 
     def get_successes_of_goals(self) -> Mapping[GoalHashable, List[bool]]:
         return dict(self._successes_per_goal)
+
+    def seed(self, seed=None):
+        self.action_space.seed(seed)
+        self.observation_space.seed(seed)
 
     def render(self, mode='human'):
         if self._plot is None:

@@ -36,7 +36,7 @@ def test_restart_reset_steps():
 
 
 @pytest.mark.parametrize("env", [ColliderEnv(visualize=False, max_episode_len=10),
-                                 ToyLab(max_episode_len=10)])
+                                 ToyLab(max_episode_len=10, seed=1)])
 def test_env_trajectory(env):
     agent = null_agent(action_space=env.action_space)
     assert len(list(trajectory(π=agent, env=env))) == 10

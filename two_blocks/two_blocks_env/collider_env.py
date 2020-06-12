@@ -26,6 +26,9 @@ class Observation(OrderedDict):
         self.achieved_goal = achieved_goal
         self.desired_goal = desired_goal
 
+    def __eq__(self, other):
+        return all(np.allclose(other[k], v) for k, v in self.items())
+
 
 class SettableGoalEnv(ABC, gym.GoalEnv):
     max_episode_len: int

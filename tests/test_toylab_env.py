@@ -64,3 +64,23 @@ def test_moving_one_step_away_from_goal_still_success():
     obs, r, done, info = env.step(env.action_space.high)
     assert info["is_success"] == 1
     assert env.compute_reward(obs.achieved_goal, obs.desired_goal, None) == env.reward_range[1]
+
+def test_seed_determines_trajectories():
+    assert ToyLab(seed=0).reset() == ToyLab(seed=0).reset()
+    assert ToyLab(seed=0).reset() != ToyLab(seed=1).reset()
+
+    env = ToyLab(seed=0)
+    env.reset()
+
+    mk_actions = lambda: [env.action_space.sample() for _ in range(10)]
+    mk_obs = lambda: [env.reset() for _ in range(10)]
+
+    actions = mk_actions()
+    obss = mk_obs()
+    trajectory = [env.step(a) for a in actions]
+
+    env.seed(0)
+    env.reset()
+    assert np.allclose(actions, mk_actions())
+    assert obss == mk_obs()
+    assert trajectory == [env.step(a) for a in actions]
