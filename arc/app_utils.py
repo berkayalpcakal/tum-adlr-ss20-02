@@ -78,3 +78,19 @@ def pairwise(iterable):
     a, b = tee(iterable)
     next(b, None)
     return zip(a, b)
+
+from tensorflow.python.summary.summary_iterator import summary_iterator
+import pandas as pd
+
+def has_len_1(e):
+    return len(e.summary.value) == 1
+
+def to_dict(e):
+    return {"time": e.wall_time, "step": e.step, "episode_reward": e.summary.value[0].simple_value}
+
+def dump_tb_rewards_to_csv(tb_fpath: str, csv_fpath: str) -> None:
+    gen = summary_iterator(tb_fpath)
+    rews = filter(has_len_1, gen)
+    dicts = map(to_dict, rews)
+    df = pd.DataFrame.from_dict(dicts)
+    df.to_csv(csv_fpath, index=False)
