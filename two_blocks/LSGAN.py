@@ -30,15 +30,24 @@ class Generator(nn.Module):
             nn.Linear(input_size, hidden_size),
             nn.ReLU()
         )
-        
+
         self.layer2 = nn.Sequential(
+            nn.Linear(hidden_size, hidden_size),
+            nn.ReLU()
+        )
+
+        self.layer3 = nn.Sequential(
+            nn.Linear(hidden_size, hidden_size),
+            nn.ReLU()
+        )                
+        
+        self.layerEnd = nn.Sequential(
             nn.Linear(hidden_size, output_size),
             nn.Tanh()               # tanh returns values between [-1,1]
         )
 
         self.all_layers = nn.Sequential(
-            self.layer1,
-            self.layer2
+            self.layer1, self.layer2, self.layer3, self.layerEnd
         )
 
         self.apply(weights_xavier_init)
@@ -58,12 +67,20 @@ class Discriminator(nn.Module):
         )
         
         self.layer2 = nn.Sequential(
+            nn.Linear(hidden_size, hidden_size),
+        )
+
+        self.layer3 = nn.Sequential(
+            nn.Linear(hidden_size, hidden_size),
+            nn.LeakyReLU()
+        )
+        
+        self.layerEnd = nn.Sequential(
             nn.Linear(hidden_size, output_size),
         )
 
         self.all_layers = nn.Sequential(
-            self.layer1,
-            self.layer2
+            self.layer1, self.layer2, self.layer3, self.layerEnd 
         )
 
         self.apply(weights_xavier_init)
