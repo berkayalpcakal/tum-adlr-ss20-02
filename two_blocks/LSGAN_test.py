@@ -12,10 +12,10 @@ SEED = random.randint(0,2**32-1)
 np.random.seed(SEED)
 
 G_Input_Size  = 4
-G_Hidden_Size = 256
-D_Hidden_Size = 256
+G_Hidden_Size = 128
+D_Hidden_Size = 512
 
-num_samples_goalGAN_goals  = 150
+num_samples_goalGAN_goals  = 200
 num_sample_random_goals    = num_samples_goalGAN_goals * 2
 map_length = 1
 eps = 0.1
@@ -114,7 +114,7 @@ def main():
         
     ### validation
     for i in range(5):
-        z         = torch.randn(size=(2*num_samples_goalGAN_goals, goalGAN.Generator.noise_size))
+        z         = torch.randn(size=(num_samples_goalGAN_goals, goalGAN.Generator.noise_size))
         gan_goals = goalGAN.Generator.forward(z).detach()
         labels    = label_goals_complex(gan_goals, target_point)
 
