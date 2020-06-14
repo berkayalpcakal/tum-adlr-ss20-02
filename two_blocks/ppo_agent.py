@@ -2,6 +2,9 @@ import warnings
 from typing import Callable
 import numpy as np
 from gym.wrappers import FlattenObservation
+from stable_baselines.common.callbacks import CheckpointCallback
+from utils import Dirs
+
 with warnings.catch_warnings():
     warnings.simplefilter(action="ignore", category=FutureWarning)
     from stable_baselines import PPO2
@@ -21,4 +24,6 @@ class PPOAgent(Agent):
         return action
 
     def train(self, timesteps: int, callback: Callable = None):
-        self._model.learn(total_timesteps=timesteps)
+        dirs = Dirs(experiment_name="goalgan-ppo-toylab")
+        cb = CheckpointCallback(save_freq=timesteps//4, save_path=dirs.models, name_prefix=dirs.prefix)
+        self._model.learn(total_timesteps=timesteps, callback=cb)
