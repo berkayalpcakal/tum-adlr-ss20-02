@@ -92,17 +92,17 @@ def train_GAN(goals: Goals, labels: Sequence[int], goalGAN):
     for _ in range(gradient_steps):
         zs = torch.randn(len(labels), goalGAN.Generator.noise_size)
         goalGAN.Discriminator.zero_grad()
-        D_loss = torch.sum(D_loss_vec(zs))
+        D_loss = torch.mean(D_loss_vec(zs))
         D_loss.backward()
         goalGAN.D_Optimizer.step()
 
     ### Train Generator ###
     gradient_steps = 1
+    var_weight = 0.01
     for _ in range(gradient_steps):
         zs = torch.randn(len(labels), goalGAN.Generator.noise_size)
         goalGAN.Generator.zero_grad()
-        
-        G_loss = torch.sum(D(G(zs))**2)
+        G_loss = torch.mean(D(G(zs))**2) + var_weight/torch.var(G(zs), dim=0).mean()
         G_loss.backward()
         goalGAN.G_Optimizer.step()
 
