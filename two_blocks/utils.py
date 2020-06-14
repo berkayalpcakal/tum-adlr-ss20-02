@@ -62,7 +62,7 @@ def display_goals(goals: np.ndarray, returns, idx, env: SettableGoalEnv):
     fig, ax = env.render(other_positions=colors,
                          show_cur_agent_and_goal_pos=False)
 
-    fig.savefig("goals_{}.png".format(idx))
+    fig.savefig("./figs/goals_{}.png".format(idx))
 
 
 class Dirs:
