@@ -137,13 +137,10 @@ class ToyLab(SettableGoalEnv):
                 if len(positions) > 0:
                     scatter_fn(name=color, pts=_denormalize(positions), c=color)
 
-        agent_pos = self._cur_pos if show_cur_agent_and_goal_pos else None
-        goal = _denormalize(self._normalized_goal) if show_cur_agent_and_goal_pos else None
+        agent_pos = None if not show_cur_agent_and_goal_pos else self._cur_pos
+        goal = None if not show_cur_agent_and_goal_pos else _denormalize(self._normalized_goal)
         scatter_fn(name="agent_pos", pts=agent_pos)
-        scatter_fn(name="goal", pts=goal)
-
-        fig.canvas.draw()
-        fig.canvas.flush_events()
+        scatter_fn(name="goal", pts=goal, c="green")
 
         return fig, ax
 

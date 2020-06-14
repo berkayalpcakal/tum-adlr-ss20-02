@@ -13,10 +13,13 @@ from two_blocks_env.collider_env import Observation, SettableGoalEnv
 
 
 class PPOAgent(Agent):
-    def __init__(self, env: SettableGoalEnv):
+    def __init__(self, env: SettableGoalEnv, loadpath: str = None):
         self._env = env
         self._flat_env = FlattenObservation(env)
-        self._model = PPO2("MlpPolicy", env=self._flat_env, verbose=0)
+        if loadpath is None:
+            self._model = PPO2("MlpPolicy", env=self._flat_env, verbose=0)
+        else:
+            self._model = PPO2.load(load_path=loadpath, env=None)
 
     def __call__(self, obs: Observation) -> np.ndarray:
         flat_obs = self._flat_env.observation(obs)
