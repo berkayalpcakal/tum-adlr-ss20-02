@@ -1,14 +1,13 @@
 import time
 from itertools import cycle
 from typing import Sequence, List, Mapping
-
 import gym
-import matplotlib.pyplot as plt
 import numpy as np
 from sklearn.preprocessing import MinMaxScaler
 from typeguard import typechecked
 
 from two_blocks_env.collider_env import Observation, SettableGoalEnv, Goal, GoalHashable
+from utils import get_updateable_scatter
 
 middle_wall_len = 12
 sidewall_height = 8
@@ -33,8 +32,19 @@ scaler.fit([_labyrinth_lower_bound, _labyrinth_upper_bound])
 def _normalize(goal: Sequence[float]) -> np.ndarray:
     return scaler.transform(goal[np.newaxis])[0]
 
-def _denormalize(norm_goal: Sequence[float]) -> np.ndarray:
-    return scaler.inverse_transform(norm_goal[np.newaxis])[0]
+def _denormalize(norm_goals: Sequence[Sequence[float]]) -> np.ndarray:
+    if not isinstance(norm_goals, np.ndarray):
+        norm_goals = np.array(list(norm_goals))
+
+    is_single_goal = norm_goals.size == 2
+    if is_single_goal:
+        norm_goals = norm_goals.reshape((1, 2))
+
+    res = scaler.inverse_transform(norm_goals)
+    if is_single_goal:
+        res = res[0]
+
+    return res
 
 
 class ToyLab(SettableGoalEnv):
@@ -112,22 +122,30 @@ class ToyLab(SettableGoalEnv):
         self.action_space.seed(seed)
         self.observation_space.seed(seed)
 
-    def render(self, mode='human'):
+    def render(self, mode="human", other_positions: Mapping[str, np.ndarray] = None,
+               show_cur_agent_and_goal_pos=True):
         if self._plot is None:
-            plt.ion()
-            fig = plt.figure()
-            ax = fig.add_subplot(111)
+            self._plot = fig, ax, scatter_fn = get_updateable_scatter()
             ax.plot(*labyrinth_corners.T)
-            s1 = ax.scatter(*self._cur_pos, c="orange")
-            s2 = ax.scatter(*_denormalize(self._normalized_goal), c="green")
             fig.show()
-            self._plot = fig, s1, s2
-        else:
-            fig, s1, s2 = self._plot
-            s1.set_offsets(self._cur_pos)
-            s2.set_offsets(_denormalize(self._normalized_goal))
+
+        fig, ax, scatter_fn = self._plot
+
+        if other_positions is not None:
+            for color, positions in other_positions.items():
+                scatter_fn(name=color, pts=None)  # clear previous
+                if len(positions) > 0:
+                    scatter_fn(name=color, pts=_denormalize(positions), c=color)
+
+        agent_pos = self._cur_pos if show_cur_agent_and_goal_pos else None
+        goal = _denormalize(self._normalized_goal) if show_cur_agent_and_goal_pos else None
+        scatter_fn(name="agent_pos", pts=agent_pos)
+        scatter_fn(name="goal", pts=goal)
+
         fig.canvas.draw()
         fig.canvas.flush_events()
+
+        return fig, ax
 
 
 _step_len = 0.5
@@ -163,7 +181,7 @@ def _are_close(x1: np.ndarray, x2: np.ndarray) -> bool:
 
 
 if __name__ == '__main__':
-    env = ToyLab()
+    env = ToyLab(seed=1)
     env.reset()
     env.render()
     for _ in range(100):

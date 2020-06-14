@@ -7,7 +7,7 @@ from stable_baselines.common.callbacks import CheckpointCallback
 from stable_baselines import HER, SAC, PPO2
 
 from GenerativeGoalLearning import trajectory
-from app_utils import Dirs
+from utils import Dirs
 from two_blocks_env.toy_labyrinth_env import ToyLab
 
 # TODO: Currently not fully working for PPO.

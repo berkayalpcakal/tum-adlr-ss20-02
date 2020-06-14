@@ -6,7 +6,7 @@ from two_blocks_env.collider_env import dim_goal
 import numpy as np
 import torch
 from two_blocks_env.toy_labyrinth_env import ToyLab
-from utils import render_goals_with_env, save_goals_plot
+from utils import display_goals
 
 """
 Algorithm in the GAN paper, Florensa 2018 
@@ -30,19 +30,17 @@ num_samples_from_old_goals = 30
 ####################
 
 env  = ToyLab()
-env.render()
 π         = PPOAgent(env=env)
 goalGAN   = initialize_GAN(env=env)
 goals_old = torch.Tensor([env.starting_obs]) + torch.randn(num_samples_from_old_goals, dim_goal(env))*0.1
 
-goals_plot = None
 for i in range(iterations):
     print(f"\n### BEGIN ITERATION {i} ###")
     z          = torch.randn(size=(num_samples_goalGAN_goals, goalGAN.Generator.noise_size))
     gan_goals  = goalGAN.Generator.forward(z).detach()
     goals      = torch.cat([gan_goals, sample(goals_old, k=num_samples_from_old_goals)])
     π, returns = update_and_eval_policy(goals, π, env)
-    goals_plot = render_goals_with_env(goals, returns, goals_plot, env); save_goals_plot(goals, returns, i, env)
+    display_goals(goals.detach().numpy(), returns, i, env)
     print(f"Average reward: {(sum(returns) / len(returns)):.2f}")
     labels     = label_goals(returns)
     print(f"Percentage of 0 vs 1 labels: {[round(n, 2) for n in (np.bincount(labels) / len(labels))]}")

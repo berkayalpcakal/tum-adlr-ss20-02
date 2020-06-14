@@ -10,7 +10,7 @@ import numpy as np
 from torch.optim.adam import Adam
 
 from GenerativeGoalLearning import trajectory
-from app_utils import Dirs
+from utils import Dirs
 from action_reps_control import sac_agent, ActionableRep, ObservationSeq, Dact
 from two_blocks_env.toy_labyrinth_env import ToyLab
 

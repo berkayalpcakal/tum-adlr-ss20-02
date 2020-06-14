@@ -1,6 +1,7 @@
+from itertools import count
 from GenerativeGoalLearning import train_GAN
 from LSGAN import LSGAN
-
+from utils import get_updateable_scatter
 import torch
 import numpy as np
 import matplotlib.pyplot as plt
@@ -31,50 +32,41 @@ def label_goals_naive(samples, target):
 def label_goals_complex(samples, target):
     return [int(Rmin <= torch.dist(s, target) <= Rmax) for s in samples]
 
-
-def plot_goals(gan_goals, rand_goals, target):
-    fig = plt.figure()
-    plt.ylim(-map_length, map_length); plt.xlim(-map_length, map_length)
-    ax = plt.gca()
+def init_plot(target, title: str = None):
+    fig, ax, scatter_fn = get_updateable_scatter()
+    ax.set_ylim(-map_length, map_length); ax.set_xlim(-map_length, map_length)
+    if title is not None:
+        ax.set_title(title)
 
     # plot target circles
-    circle_rmin = plt.Circle((target[0], target[1]), Rmin, color='green', alpha=0.1)
-    circle_rmax = plt.Circle((target[0], target[1]), Rmax, color='red',   alpha=0.1)
+    circle_rmin = plt.Circle(target, Rmin, color='green', alpha=0.1)
+    circle_rmax = plt.Circle(target, Rmax, color='red',   alpha=0.1)
     ax.add_artist(circle_rmin)
     ax.add_artist(circle_rmax)
 
-    # plot gan_goals
-    if gan_goals is not None:
-        x = [g[0] for g in gan_goals.detach().numpy()]
-        y = [g[1] for g in gan_goals.detach().numpy()]
-        ax.scatter(x,y, color='black')
+    def plot_goals(gan_goals, rand_goals):
+        # plot gan_goals
+        if gan_goals is not None:
+            scatter_fn(name="gan_goals", pts=gan_goals.detach().numpy(), color='black')
 
-    # plot rand_goals
-    if rand_goals is not None:
-        x = [g[0] for g in rand_goals.detach().numpy()]
-        y = [g[1] for g in rand_goals.detach().numpy()]
-        ax.scatter(x,y, color='gray')
+        # plot rand_goals
+        if rand_goals is not None:
+            scatter_fn(name="rand_goals", pts=rand_goals.detach().numpy(), color="gray")
 
-    plt.show()
-
+    return plot_goals
 
 def initial_gan_train(goalGAN):
     ## initial training of GAN with random samples
     ## aim is to make G generate evenly distributed goals before starting the actual training
     ## if we do not run this, G generates goals concentrated around (0,0)
+    plot_fn = init_plot(target_point, title="Pretraining")
 
     for i in range(10):
         rand_goals  = torch.tensor(np.random.uniform(-1, 1, size=(num_samples_goalGAN_goals, 2)))        
         labels_rand = label_goals_complex(rand_goals, target_point)
-
-        #z          = torch.randn(size=(num_samples_goalGAN_goals, goalGAN.Generator.noise_size))
-        #gan_goals  = goalGAN.Generator.forward(z).detach()
-        #plot_goals(gan_goals, rand_goals, target_point)
-
-        print("Init Iteration: {}".format(i))        
+        plot_fn(None, rand_goals)
+        print("Init Iteration: {}".format(i))
         goalGAN   = train_GAN(rand_goals, labels_rand, goalGAN)
-
-
 
 def main():
     goalGAN = LSGAN(generator_input_size=G_Input_Size,
@@ -85,7 +77,8 @@ def main():
                         discriminator_output_size=1,
                         map_scale=map_length)
 
-    initial_gan_train(goalGAN) 
+    initial_gan_train(goalGAN)
+    plot_fn = init_plot(target_point, title="Training")
 
     ### training
     for i in range(1000):
@@ -98,7 +91,7 @@ def main():
         labels_rand = label_goals_complex(rand_goals, target_point)
         labels      = labels_gan + labels_rand # concat lists 
 
-        #plot_goals(gan_goals, rand_goals, target_point)
+        plot_fn(gan_goals, rand_goals)
 
         print("Iteration: {},   Number of generated positive samples: {}/{}".format(i, np.sum(labels_gan), gan_goals.shape[0]))
         if np.sum(labels) < 2:
@@ -111,15 +104,17 @@ def main():
             break
 
         goalGAN   = train_GAN(goals, labels, goalGAN)
-        
+
     ### validation
-    for i in range(5):
+    plot_fn = init_plot(target_point, title="Validation")
+    for i in count():
         z         = torch.randn(size=(num_samples_goalGAN_goals, goalGAN.Generator.noise_size))
         gan_goals = goalGAN.Generator.forward(z).detach()
         labels    = label_goals_complex(gan_goals, target_point)
 
         print("Number of generated positive samples: {}/{}".format(np.sum(labels), gan_goals.shape[0]))
-        plot_goals(gan_goals, None, target_point)
+        plot_fn(gan_goals, None)
+        input("Press any key for next iter")
 
 if __name__ == '__main__':
     main()

@@ -1,8 +1,13 @@
 import functools
-import matplotlib.pyplot as plt
-from two_blocks_env.collider_env import SettableGoalEnv
-from two_blocks_env.toy_labyrinth_env import _denormalize
+import os
+from pathlib import Path
+from typing import Dict, Sequence, Tuple
 import numpy as np
+from matplotlib.collections import PathCollection
+import matplotlib.pyplot as plt
+
+from two_blocks_env.collider_env import SettableGoalEnv
+
 
 def print_message(msg: str):
     def decorator(func):
@@ -15,38 +20,85 @@ def print_message(msg: str):
         return printer
     return decorator
 
+def get_updateable_scatter():
+    plt.ion()
+    fig, ax = plt.subplots()
+    scatters: Dict[str, PathCollection] = dict()
 
-def render_goals_with_env(goals, returns, plot, env: SettableGoalEnv):
-    # Plotting
-    denormalized_goals = [_denormalize(g) for g in goals]
+    def scatter(name: str, pts: np.ndarray, *args, **kwargs):
+        if pts is None or len(pts) == 0:
+            if name in scatters:
+                scatters.pop(name).remove()
 
-    if plot is None:
-        plot = env._plot[0].get_axes()[0].scatter(*zip(*denormalized_goals))
-    else:
-        plot.set_offsets(denormalized_goals)
-    env.render()
-    return plot
+        else:
+            if pts.size == 2:
+                pts = pts[np.newaxis]
+            assert pts.shape[1] == 2, "Inputs pts must have shape (N, 2)"
 
-def save_goals_plot(goals, returns, idx, env: SettableGoalEnv):
-    denormalized_goals = np.array([_denormalize(g) for g in goals])
+            if name in scatters:
+                scatters[name].set_offsets(pts)
+            else:
+                scatters[name] = ax.scatter(*pts.T, *args, **kwargs)
 
+        fig.canvas.draw()
+        fig.canvas.flush_events()
+
+    return fig, ax, scatter
+
+def display_goals(goals: np.ndarray, returns, idx, env: SettableGoalEnv):
     rewards = np.array(returns)
     low_reward_idx  = np.argwhere(0.1>rewards).reshape(-1,)
     high_reward_idx = np.argwhere(0.9<rewards).reshape(-1,)
     goid_reward_idx = np.argwhere(np.array([int(0.1 <= r <= 0.9) for r in returns])==1).reshape(-1,)
 
-    low_reward_goals  = list(denormalized_goals[low_reward_idx] )
-    high_reward_goals = list(denormalized_goals[high_reward_idx])
-    goid_reward_goals = list(denormalized_goals[goid_reward_idx])
+    low_reward_goals  = goals[low_reward_idx]
+    high_reward_goals = goals[high_reward_idx]
+    goid_reward_goals = goals[goid_reward_idx]
 
-    fig = plt.figure()
-    ax = plt.gca()
-    ax.plot(*env._labyrinth_corners.T)
+    colors = {"red": low_reward_goals,
+              "green": high_reward_goals,
+              "blue": goid_reward_goals,
+              "orange": env.starting_obs}
+    fig, ax = env.render(other_positions=colors,
+                         show_cur_agent_and_goal_pos=False)
 
-    # if plot is None:
-    if len(low_reward_goals) > 0:  ax.scatter(*zip(*low_reward_goals), c=['red'])
-    if len(high_reward_goals) > 0: ax.scatter(*zip(*high_reward_goals), c=['green'])
-    if len(goid_reward_goals) > 0: ax.scatter(*zip(*goid_reward_goals), c=['blue']) 
+    fig.savefig("goals_{}.png".format(idx))
 
-    plt.savefig("goals_{}.png".format(idx))   
-    plt.close(fig)
+
+class Dirs:
+    def __init__(self, experiment_name: str):
+        self.prefix = experiment_name
+        this_fpath = os.path.realpath(os.path.join(os.getcwd(), os.path.dirname(__file__)))
+        results = Path(this_fpath)/"../all-results"/experiment_name
+        self.models = str(results/"ckpts")
+        self.tensorboard = str(results/"tensorboard")
+
+    @property
+    def best_model(self):
+        return str(Path(self.models)/latest_model(self.models))
+
+
+def latest_model(foldername: str):
+    model_names = os.listdir(foldername)
+    assert len(model_names) > 0, model_names
+    if len(model_names) == 1:
+        return model_names[0]
+    prefix_less, prefix = remove_common_prefix(model_names)
+    nums_only, suffix = remove_common_suffix(prefix_less)
+    latest_num = max(int(n) for n in nums_only)
+    return f"{prefix}{latest_num}{suffix}"
+
+
+def remove_common_prefix(strs: Sequence[str]) -> Tuple[Sequence[str], str]:
+    prefix = os.path.commonprefix(strs)
+    return [s.replace(prefix, "") for s in strs], prefix
+
+
+def remove_common_suffix(strs: Sequence[str]) -> Tuple[Sequence[str], str]:
+    rev_strs = [reverse(s) for s in strs]
+    prefix_less, prefix = remove_common_prefix(rev_strs)
+    return [reverse(s) for s in prefix_less], reverse(prefix)
+
+
+def reverse(s: str) -> str:
+    return "".join(reversed(s))
