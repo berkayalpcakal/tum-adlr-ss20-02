@@ -44,13 +44,9 @@ def copy_and_replace_goal(obss: ObservationSeq, goal: np.ndarray) -> Observation
     return new_obss
 
 def Dact(g1: np.ndarray, g2: np.ndarray, D_: ObservationSeq, pi: GaussianPolicy) -> Tensor:
-    num_s_samples = len(D_)
-    obss_s1 = copy_and_replace_goal(obss=random.sample(D_, k=num_s_samples), goal=g1)
-    N1s = pi(obss_s1)
-
-    obss_s2 = copy_and_replace_goal(obss=random.sample(D_, k=num_s_samples), goal=g2)
-    N2s = pi(obss_s2)
-
+    obs_samples = random.sample(D_, k=3)
+    N1s = pi(copy_and_replace_goal(obss=obs_samples, goal=g1))
+    N2s = pi(copy_and_replace_goal(obss=obs_samples, goal=g2))
     kls = [KL(N1, N2) + KL(N2, N1) for N1, N2 in zip(N1s, N2s)]
     return torch.mean(Tensor(kls))
 

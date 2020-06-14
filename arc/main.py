@@ -1,3 +1,5 @@
+import random
+from datetime import datetime
 from itertools import islice, count
 from typing import Iterable
 
@@ -6,7 +8,6 @@ import torch
 from stable_baselines import HER
 import numpy as np
 from torch.optim.adam import Adam
-from torch.utils.data.dataloader import DataLoader
 
 from GenerativeGoalLearning import trajectory
 from app_utils import Dirs
@@ -21,6 +22,7 @@ def take(n: int, it: Iterable):
     return list(islice(it, n))
 
 wall = np.array([[x1, 0] for x1 in np.linspace(-1, 0.5, 30)])
+starting_pos = ToyLab.starting_obs
 
 def init_viz():
     X, Y = np.mgrid[-1:1:0.1, -1:1:0.1]
@@ -29,22 +31,25 @@ def init_viz():
     ax: plt.Axes = fig.add_subplot(111)
     ax.set_autoscale_on(True)
     scatter = ax.scatter(*Xs)
-    scatter2 = ax.scatter(*wall.T, c="red")
-    starting_pos = ToyLab.starting_obs
-    sactter3 = ax.scatter(*starting_pos, c="orange")
+    wall_line, = ax.plot(*wall.T, c="red")
+    scatter2 = ax.scatter(*starting_pos, c="orange")
     t = count()
+    viztime = {"last": datetime.now()}
 
     def viz(phi: ActionableRep):
+        if (datetime.now() - viztime["last"]).seconds < 2:
+            return
         out = phi(Tensor(Xs.T)).detach().numpy()
         scatter.set_offsets(out)
         wall_out = phi(Tensor(wall)).detach().numpy()
-        scatter2.set_offsets(wall_out)
-        sactter3.set_offsets(phi(Tensor(starting_pos)).detach().numpy())
+        wall_line.set_data(wall_out.T)
+        scatter2.set_offsets(phi(Tensor(starting_pos)).detach().numpy())
         ax.ignore_existing_data_limits = True
         ax.update_datalim(scatter.get_datalim(ax.transData))
         ax.autoscale_view()
         fig.canvas.draw()
         fig.canvas.flush_events()
+        viztime["last"] = datetime.now()
         #fig.savefig(f"./figs/arc-fig-{next(t)}.png")
     return viz
 
@@ -60,40 +65,44 @@ if __name__ == '__main__':
     bins = np.bincount(traj_lens)
     fig, ax = plt.subplots()
     ax.bar(range(len(bins)), bins)
-    fig.show()
     env = ToyLab(max_episode_len=int(2*np.mean(traj_lens)))
 
-    steps_gen = (step for _ in count() for step in trajectory(agent, env))
-    obs_gen = (step[0] for step in steps_gen)
-
+    traj_gen = ([step[3] for step in trajectory(agent, env)] for _ in count())
     phi = ActionableRep(input_size=env.observation_space["achieved_goal"].shape[0])
     optimizer = Adam(phi.parameters(), lr=1e-3)
     loss_fn = nn.MSELoss()
-    num_epochs = 300
-    approx_num_diff_goals = 2
-    D: ObservationSeq = take(approx_num_diff_goals*int(np.mean(traj_lens)), obs_gen)
+    num_epochs = 20
+    num_trajectories = 200
+    trajectories = take(num_trajectories, traj_gen)
+    D: ObservationSeq = [obs for t in trajectories for obs in t]
 
-    goals = np.array(list(set(tuple(o.desired_goal) for o in D)))
-    states = np.array([o.achieved_goal for o in D])
-    fig, axs = plt.subplots(1, 2)
-    axs[0].scatter(*goals.T); axs[0].scatter(*wall.T, c="red")
-    axs[1].scatter(*states.T); axs[1].scatter(*wall.T, c="red")
-    fig.show()
+    goals = np.array([t[0].desired_goal for t in trajectories])
+    fig, axs = plt.subplots(1, 2, sharex=True, sharey=True)
+    axs[0].set_ylim((-1, 1)); axs[0].set_xlim((-1, 1))
+    axs[0].scatter(*goals.T)
+    for t in trajectories:
+        states = np.array([o.achieved_goal for o in t])
+        axs[1].plot(*states.T)
+    for ax in axs:
+        ax.plot(*wall.T, c="red")
+        ax.scatter(*starting_pos, c="orange")
     viz = init_viz()
     viz(phi)
 
+    epoch_len = sum((len(t) for t in trajectories))
     for epoch in range(num_epochs):
         losses = []
-        for batch in DataLoader(D, batch_size=2, shuffle=True):
-            s1, s2 = batch["achieved_goal"].float()
+        for _ in range(epoch_len):
+            traj1, traj2 = random.sample(trajectories, k=2)
+            s1, s2 = [Tensor(random.choice(tr).achieved_goal).float() for tr in [traj1, traj2]]
 
             optimizer.zero_grad()
             loss = loss_fn(torch.dist(phi(s1), phi(s2)), Dact(s1, s2, D, pi=gaussian_pi))
             loss.backward()
             optimizer.step()
             losses.append(float(loss))
+            viz(phi)
         print(f"Epoch finihsed: {epoch}, loss: {np.mean(losses):.2f}", flush=True)
-        viz(phi)
 
     torch.save(phi.state_dict(), "arc.pt")
 
