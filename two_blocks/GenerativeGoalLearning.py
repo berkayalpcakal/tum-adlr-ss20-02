@@ -71,9 +71,19 @@ def update_and_eval_policy(goals: Goals, π: Agent, env: SettableGoalEnv) -> Tup
     episode_successes_per_goal = env.get_successes_of_goals()
     assert all(len(sucs) > 0 for g, sucs in episode_successes_per_goal.items()),\
         "More steps are necessary to eval each goal at least once."
+    
     returns = [np.mean(episode_successes_per_goal[tuple(g)]) for g in goals.numpy()]
     return π, returns
 
+def eval_policy(goals: Goals, π: Agent, env: SettableGoalEnv):
+    for g in goals:
+        for obs, action, reward, next_obs, done, info in trajectory(π, env, goal=g):
+            if info.get("is_success"):
+                break
+    import pdb; pdb.set_trace()
+    episode_successes_per_goal = env.get_successes_of_goals()
+    returns = [np.mean(episode_successes_per_goal[tuple(g)]) for g in goals.numpy()]
+    return returns
 
 def label_goals(returns: Returns) -> Sequence[int]:
     return [int(Rmin <= r <= Rmax) for r in returns]
@@ -108,7 +118,6 @@ def train_GAN(goals: Goals, labels: Sequence[int], goalGAN):
 
     return goalGAN
 
-
 def trajectory(π: Agent, env: SettableGoalEnv, goal: np.ndarray = None,
                sleep_secs: float = 0, render=False, print_every: int = None):
     if goal is not None:
@@ -131,7 +140,7 @@ def trajectory(π: Agent, env: SettableGoalEnv, goal: np.ndarray = None,
         if print_every is not None and info.get("is_success"):
             print("SUCCESS!")
 
-        yield obs, action, reward, next_obs, done
+        yield obs, action, reward, next_obs, done, info
 
         obs = next_obs
         if done:
