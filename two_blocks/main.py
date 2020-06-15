@@ -1,6 +1,6 @@
 import warnings
 from GenerativeGoalLearning import initialize_GAN, update_and_eval_policy, \
-    label_goals, train_GAN, sample, eval_policy
+    label_goals, train_GAN, sample, eval_policy, update_replay
 from ppo_agent import PPOAgent
 from two_blocks_env.collider_env import dim_goal
 import numpy as np
@@ -65,4 +65,4 @@ for i in range(initial_iterations, iterations):
     print(f"Percentage of 0 vs 1 labels: {[round(n, 2) for n in (np.bincount(labels) / len(labels))]}")
     if all([lab == 0 for lab in labels]): warnings.warn("All labels are 0")
     goalGAN    = train_GAN(goals, labels, goalGAN)
-    goals_old  = goals
+    goals_old  = update_replay(goals, goals_old=goals_old)

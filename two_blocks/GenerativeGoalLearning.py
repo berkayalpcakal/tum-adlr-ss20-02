@@ -118,6 +118,15 @@ def train_GAN(goals: Goals, labels: Sequence[int], goalGAN):
 
     return goalGAN
 
+@print_message("Updating the regularized replay buffer")
+def update_replay(goals: Tensor, goals_old: Tensor):
+    eps = 0.1
+    for g in goals:
+        g_is_close_to_goals_old = min((torch.dist(g, g_old) for g_old in goals_old)) < eps
+        if not g_is_close_to_goals_old:
+            goals_old = torch.cat((g[None], goals_old))
+    return goals_old
+
 def trajectory(π: Agent, env: SettableGoalEnv, goal: np.ndarray = None,
                sleep_secs: float = 0, render=False, print_every: int = None):
     if goal is not None:
