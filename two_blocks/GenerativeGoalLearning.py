@@ -97,24 +97,26 @@ def train_GAN(goals: Goals, labels: Sequence[int], goalGAN):
     def D_loss_vec(z: Tensor) -> Tensor:
         return y*(D(goals)-1)**2 + (1-y)*(D(goals)+1)**2 +(D(G(z))+1)**2
 
-    ### Train Discriminator ###
-    gradient_steps = 20
-    for _ in range(gradient_steps):
-        zs = torch.randn(len(labels), goalGAN.Generator.noise_size)
-        goalGAN.Discriminator.zero_grad()
-        D_loss = torch.mean(D_loss_vec(zs))
-        D_loss.backward()
-        goalGAN.D_Optimizer.step()
+    iterations = 10
+    for _ in range(iterations):
+        ### Train Discriminator ###
+        gradient_steps = 1
+        for _ in range(gradient_steps):
+            zs = torch.randn(len(labels), goalGAN.Generator.noise_size)
+            goalGAN.Discriminator.zero_grad()
+            D_loss = torch.mean(D_loss_vec(zs))
+            D_loss.backward()
+            goalGAN.D_Optimizer.step()
 
-    ### Train Generator ###
-    gradient_steps = 1
-    var_weight = 0.01
-    for _ in range(gradient_steps):
-        zs = torch.randn(len(labels), goalGAN.Generator.noise_size)
-        goalGAN.Generator.zero_grad()
-        G_loss = torch.mean(D(G(zs))**2) + var_weight/torch.var(G(zs), dim=0).mean()
-        G_loss.backward()
-        goalGAN.G_Optimizer.step()
+        ### Train Generator ###
+        gradient_steps = 1
+        β = goalGAN.Generator.variance_coeff
+        for _ in range(gradient_steps):
+            zs = torch.randn(len(labels), goalGAN.Generator.noise_size)
+            goalGAN.Generator.zero_grad()
+            G_loss = torch.mean(D(G(zs))**2) + β/torch.var(G(zs), dim=0).mean()
+            G_loss.backward()
+            goalGAN.G_Optimizer.step()
 
     return goalGAN
 

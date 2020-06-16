@@ -9,19 +9,17 @@ from numpy import random
 
 #### PARAMETERS ####
 torch.set_default_dtype(torch.float64)
-SEED = random.randint(0,2**32-1)
-np.random.seed(SEED)
 
 G_Input_Size  = 4
 G_Hidden_Size = 128
 D_Hidden_Size = 512
 
-num_samples_goalGAN_goals  = 200
+num_samples_goalGAN_goals  = 120
 num_sample_random_goals    = num_samples_goalGAN_goals * 2
 map_length = 1
 eps = 0.1
-Rmin = 0.3 
-Rmax = 0.6
+Rmin = 0.3
+Rmax = 0.4
 target_point = torch.Tensor(np.random.random(size=(2)) * 2 * map_length - map_length) /2
 ####################
 
@@ -53,6 +51,8 @@ def init_plot(target, title: str = None):
         if rand_goals is not None:
             scatter_fn(name="rand_goals", pts=rand_goals.detach().numpy(), color="gray")
 
+        return fig
+
     return plot_goals
 
 def initial_gan_train(goalGAN):
@@ -69,6 +69,8 @@ def initial_gan_train(goalGAN):
         goalGAN   = train_GAN(rand_goals, labels_rand, goalGAN)
 
 def main():
+    torch.manual_seed(0)
+    np.random.seed(0)
     goalGAN = LSGAN(generator_input_size=G_Input_Size,
                         generator_hidden_size=G_Hidden_Size,
                         generator_output_size=2,
@@ -81,7 +83,7 @@ def main():
     plot_fn = init_plot(target_point, title="Training")
 
     ### training
-    for i in range(1000):
+    for i in range(50):
         z          = torch.randn(size=(num_samples_goalGAN_goals, goalGAN.Generator.noise_size))
         gan_goals  = goalGAN.Generator.forward(z).detach()
         rand_goals = torch.tensor(np.random.uniform(-1, 1, size=(num_sample_random_goals,2)))
