@@ -3,27 +3,25 @@
 Please install:
 * Pytorch
 * Stable-Baselines
-
-And the dependencies:
+Install the system dependencies:
+```bash
+cat sys-packages.txt | xargs sudo apt install -y
+```
+And the Python dependencies:
 ```bash
 python -m pip install -r requirements.txt
+```
+As well as this package:
+```bash
+python -m pip install -e .
 ```
 ### Run
 Requires python 3.6+
 ```bash
 python main.py
 ```
-
-# Environment
-Currently, we have a red ball that is controlled by the agent and whose
-goal is to reach the blue block.
-
 # Testing
-First install the this package. From **this** folder, run:
-```bash
-python -m pip install -e .
-```
-Then run the tests. From **above** this folder, run:
+This Python package must be installed. Then run the tests. From **above** this folder, run:
 ```bash
 python -m pytest
 ```
