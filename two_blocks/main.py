@@ -5,6 +5,7 @@ from ppo_agent import PPOAgent
 from two_blocks_env.collider_env import dim_goal
 import numpy as np
 import torch
+from torchsummary import summary
 from two_blocks_env.toy_labyrinth_env import ToyLab
 from utils import display_goals
 
@@ -39,6 +40,15 @@ env  = ToyLab()
 π         = PPOAgent(env=env)
 goalGAN   = initialize_GAN(env=env)
 goals_old = torch.Tensor([env.starting_obs]) + torch.randn(num_samples_from_old_goals, dim_goal(env))*0.1
+
+### print model summary
+goalGAN.Generator=goalGAN.Generator.float(); goalGAN.Discriminator=goalGAN.Discriminator.float()
+summary(goalGAN.Generator,     input_size=(1,1,4), device='cpu')
+summary(goalGAN.Discriminator, input_size=(1,1,2), device='cpu')
+goalGAN.Generator=goalGAN.Generator.double(); goalGAN.Discriminator=goalGAN.Discriminator.double()
+#######################
+
+import pdb; pdb.set_trace()
 
 ## Initial training of the policy with random goals
 goals_plot = None

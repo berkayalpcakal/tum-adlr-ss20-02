@@ -19,7 +19,7 @@ Rmax = 0.9
 
 G_Input_Size  = 4       # noise dim, somehow noise size is defined as 4 in their implementation for ant_gan experiment
 G_Hidden_Size = 256
-D_Hidden_Size = 256
+D_Hidden_Size = 512
 ####################
 
 Goals = Tensor
