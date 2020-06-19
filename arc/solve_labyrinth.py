@@ -1,18 +1,18 @@
 import os
+from typing import Tuple
 import click
 from stable_baselines.common import BaseRLModel
-
 from stable_baselines.common.callbacks import CheckpointCallback
 from stable_baselines import HER, SAC, PPO2
 
-from GenerativeGoalLearning import trajectory
+from GenerativeGoalLearning import trajectory, Agent, evaluate
 from ppo_agent import PPOAgent
+from two_blocks_env.collider_env import SettableGoalEnv
 from utils import Dirs
 from two_blocks_env.toy_labyrinth_env import ToyLab
 
 
 def train(model_class: type(BaseRLModel), dirs: Dirs, num_steps: int):
-    # TODO: Currently not fully working for PPO.
     num_checkpoints = 4
     env = ToyLab()
     options = {"env": env, "tensorboard_log": dirs.tensorboard}
@@ -27,14 +27,18 @@ def train(model_class: type(BaseRLModel), dirs: Dirs, num_steps: int):
     model.learn(total_timesteps=num_steps, callback=cb)
 
 
-def viz(model_class: type(BaseRLModel), dirs: Dirs):
+def load_agent(model_class: type(BaseRLModel), dirs: Dirs) -> Tuple[Agent, SettableGoalEnv]:
     env = ToyLab()
     if model_class == HER:
         model = model_class.load(load_path=dirs.best_model, env=env)
         agent = lambda obs: model.predict(obs, deterministic=True)[0]
-    elif model_class == PPO2:
+    else:
         agent = PPOAgent(env=env, loadpath=dirs.best_model)
     print(f"Loaded model {dirs.best_model}")
+    return agent, env
+
+
+def viz(agent: Agent, env: SettableGoalEnv):
     run = lambda g: sum(1 for _ in trajectory(agent, env, goal=g, sleep_secs=0.1, render=True, print_every=1))
     while True:
         env.render()
@@ -42,16 +46,29 @@ def viz(model_class: type(BaseRLModel), dirs: Dirs):
         print(f"Episode len: {run(g)}")
 
 
+class Mode:
+    TRAIN = "train"
+    VIZ   = "viz"
+    EVAL  = "eval"
+
+
 @click.command()
-@click.option("--do-train", is_flag=True, help="Whether to train the agent")
-@click.option("--alg", type=click.Choice(['her-sac', 'goalgan-ppo']), default="her-sac", help="Algorithm: 'her' (HER+SAC) or 'ppo' available.")
+@click.option("--mode", type=click.Choice([Mode.TRAIN, Mode.VIZ, Mode.EVAL]))
+@click.option("--alg", type=click.Choice(['her-sac', 'goalgan-ppo']), default="her-sac", help="Algorithm: 'her' (HER+SAC) or 'gaolgan-ppo' available.")
 @click.option("--num_steps", default=100000, show_default=True)
-def main(do_train: bool, alg: str, num_steps: int):
+def main(mode: str, alg: str, num_steps: int):
     model_class = HER if alg == "her-sac" else PPO2
     dirs = Dirs(experiment_name=f"{alg}-toylab")
-    if do_train:
-        train(model_class=model_class, dirs=dirs, num_steps=num_steps)
-    viz(model_class=model_class, dirs=dirs)
+    if mode == Mode.TRAIN:
+        return train(model_class=model_class, dirs=dirs, num_steps=num_steps)
+
+    agent, env = load_agent(model_class=model_class, dirs=dirs)
+    if mode == Mode.VIZ:
+        return viz(agent=agent, env=env)
+    elif mode == Mode.EVAL:
+        while True:
+            evaluate(agent=agent, env=env)
+            input("Press any key to re-compute.")
 
 
 if __name__ == '__main__':
