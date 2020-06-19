@@ -1,3 +1,4 @@
+import os
 import random
 from datetime import datetime
 from itertools import islice, count
@@ -5,13 +6,13 @@ from typing import Iterable
 
 import matplotlib.pyplot as plt
 import torch
-from stable_baselines import HER
 import numpy as np
 from torch.optim.adam import Adam
 
 from GenerativeGoalLearning import trajectory
-from utils import Dirs
-from action_reps_control import sac_agent, ActionableRep, ObservationSeq, Dact
+from agents import HERSACAgent
+from action_reps_control import get_gaussian_pi, ActionableRep, ObservationSeq, Dact, \
+    GaussianPolicy
 from two_blocks_env.toy_labyrinth_env import ToyLab
 
 from torch import nn
@@ -21,8 +22,10 @@ from torch import Tensor
 def take(n: int, it: Iterable):
     return list(islice(it, n))
 
+
 wall = np.array([[x1, 0] for x1 in np.linspace(-1, 0.5, 30)])
 starting_pos = ToyLab.starting_obs
+
 
 def init_viz():
     X, Y = np.mgrid[-1:1:0.1, -1:1:0.1]
@@ -54,12 +57,19 @@ def init_viz():
     return viz
 
 
+def avg_Dact(dataset: ObservationSeq, pi: GaussianPolicy):
+    def sample():
+        o1, o2 = random.sample(dataset, 2)
+        return Dact(o1.desired_goal, o2.desired_goal, dataset, pi=pi)
+
+    return np.array([sample() for _ in range(300)]).mean()
+
+
 if __name__ == '__main__':
     plt.ion()
     env = ToyLab()
-    model_fpath = Dirs("her-sac-toylab").best_model
-    model = HER.load(load_path=model_fpath, env=ToyLab)
-    agent, gaussian_pi = sac_agent(model, ToyLab)
+    agent = HERSACAgent(env=env)
+    gaussian_pi = get_gaussian_pi(agent, env)
 
     traj_lens = [len(list(trajectory(agent, env))) for _ in range(100)]
     bins = np.bincount(traj_lens)
@@ -69,9 +79,13 @@ if __name__ == '__main__':
 
     traj_gen = ([step[3] for step in trajectory(agent, env)] for _ in count())
     phi = ActionableRep(input_size=env.observation_space["achieved_goal"].shape[0])
-    optimizer = Adam(phi.parameters(), lr=1e-3)
+    fname = "arc.pt"
+    if os.path.isfile(fname):
+        phi.load_state_dict(torch.load(fname))
+        print("loaded previous state")
+    optimizer = Adam(phi.parameters(), lr=1e-4)
     loss_fn = nn.MSELoss()
-    num_epochs = 20
+    num_epochs = 100
     num_trajectories = 200
     trajectories = take(num_trajectories, traj_gen)
     D: ObservationSeq = [obs for t in trajectories for obs in t]
@@ -89,21 +103,20 @@ if __name__ == '__main__':
     viz = init_viz()
     viz(phi)
 
+    avg = avg_Dact(dataset=D, pi=gaussian_pi)
     epoch_len = sum((len(t) for t in trajectories))
-    for epoch in range(num_epochs):
+    for epoch in range(1, num_epochs):
         losses = []
         for _ in range(epoch_len):
             traj1, traj2 = random.sample(trajectories, k=2)
             s1, s2 = [Tensor(random.choice(tr).achieved_goal).float() for tr in [traj1, traj2]]
 
             optimizer.zero_grad()
-            loss = loss_fn(torch.dist(phi(s1), phi(s2)), Dact(s1, s2, D, pi=gaussian_pi))
+            loss = loss_fn(torch.dist(phi(s1), phi(s2)), Dact(s1, s2, D, pi=gaussian_pi)/avg)
             loss.backward()
             optimizer.step()
             losses.append(float(loss))
             viz(phi)
-        print(f"Epoch finihsed: {epoch}, loss: {np.mean(losses):.2f}", flush=True)
-
-    torch.save(phi.state_dict(), "arc.pt")
-
-    print("")
+        if epoch % 10 == 0:
+            torch.save(phi.state_dict(), fname)
+        print(f"Epoch finished: {epoch}, loss: {np.mean(losses):.2f}", flush=True)
