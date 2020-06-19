@@ -1,7 +1,6 @@
 import collections
 import time
 from itertools import count
-from typing import Callable
 from typing import Sequence, Tuple
 
 import gym
@@ -65,10 +64,10 @@ def initialize_GAN(env: gym.GoalEnv) -> LSGAN:
 
 
 @print_message("Training the policy on current goals")
-def update_and_eval_policy(goals: Goals, π: Agent, env: SettableGoalEnv) -> Tuple[Agent, Returns]:
+def update_and_eval_policy(goals: Goals, π: Agent, env: SettableGoalEnv, eval_env: SettableGoalEnv) -> Tuple[Agent, Returns]:
     env.set_possible_goals(goals.numpy())
     env.reset()
-    π.train(timesteps=env.max_episode_len*len(goals)*5)
+    π.train(timesteps=env.max_episode_len*len(goals)*3, num_checkpoints=1, eval_env=eval_env)
     episode_successes_per_goal = env.get_successes_of_goals()
     assert all(len(sucs) > 0 for g, sucs in episode_successes_per_goal.items()),\
         "More steps are necessary to eval each goal at least once."

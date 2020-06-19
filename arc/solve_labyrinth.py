@@ -30,7 +30,8 @@ class Mode:
 @click.option("--alg", type=click.Choice(['her-sac', 'ppo']), default="her-sac", help="Algorithm: 'her' (HER+SAC) or 'ppo' available.")
 @click.option("--num_steps", default=100000, show_default=True)
 def main(mode: str, alg: str, num_steps: int):
-    env = ToyLab()
+    env_fn = ToyLab
+    env = env_fn()
     if alg == Algs.HERSAC:
         agent = HERSACAgent(env=env)
     elif alg == Algs.PPO:
@@ -39,7 +40,7 @@ def main(mode: str, alg: str, num_steps: int):
         raise NotImplementedError
 
     if mode == Mode.TRAIN:
-        return agent.train(timesteps=num_steps)
+        return agent.train(timesteps=num_steps, eval_env=env_fn())
     elif mode == Mode.VIZ:
         return viz(agent=agent, env=env)
     elif mode == Mode.EVAL:

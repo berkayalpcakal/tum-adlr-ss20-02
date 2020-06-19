@@ -36,8 +36,9 @@ np.random.seed(SEED)
 torch.set_default_dtype(torch.float64)
 ####################
 
-env  = ToyLab()
-π         = PPOAgent(env=env)
+env       = ToyLab()
+eval_env  = ToyLab()  # Must be a different instance.
+π         = PPOAgent(env=env, experiment_name="goalgan-ppo")
 goalGAN   = initialize_GAN(env=env)
 goals_old = torch.Tensor([env.starting_obs]) + torch.randn(num_samples_from_old_goals, dim_goal(env))*0.1
 
@@ -52,7 +53,7 @@ goalGAN.Generator=goalGAN.Generator.double(); goalGAN.Discriminator=goalGAN.Disc
 goals_plot = None
 for i in range(initial_iterations):
     rand_goals = torch.tensor(np.random.uniform(-1, 0, size=(num_samples_random_goals, 2)))
-    π,returns  = update_and_eval_policy(rand_goals, π, env)
+    π,returns  = update_and_eval_policy(rand_goals, π, env, eval_env)
     print(f"Average reward: {(sum(returns) / len(returns)):.2f}")
     labels     = label_goals(returns)
     print(f"Percentage of 0 vs 1 labels: {[round(n, 2) for n in (np.bincount(labels) / len(labels))]}")
@@ -66,7 +67,7 @@ for i in range(initial_iterations, iterations):
     gan_goals  = goalGAN.Generator.forward(z).detach()
     rand_goals = torch.tensor(np.random.uniform(-1, 1, size=(num_samples_random_goals, 2)))
     goals      = torch.cat([gan_goals, sample(goals_old, k=num_samples_from_old_goals), rand_goals])
-    π, returns = update_and_eval_policy(goals, π, env)
+    π, returns = update_and_eval_policy(goals, π, env, eval_env)
     display_goals(goals.detach().numpy(), returns, i, env)
     print(f"Average reward: {(sum(returns) / len(returns)):.2f}")
     labels     = label_goals(returns)

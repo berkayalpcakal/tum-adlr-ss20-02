@@ -16,8 +16,8 @@ from two_blocks_env.collider_env import Observation, SettableGoalEnv
 
 class PPOAgent(Agent):
     def __init__(self, env: SettableGoalEnv, verbose=0, experiment_name="ppo"):
-        self._dirs = Dirs(experiment_name=experiment_name + "-" + type(env).__name__)
         self._env = env
+        self._dirs = Dirs(experiment_name=experiment_name + "-" + type(env).__name__)
         self._flat_env = HERGoalEnvWrapper(env)
         options = {"env": DummyVecEnv([lambda: self._flat_env]), "tensorboard_log": self._dirs.tensorboard}
         if os.path.isdir(self._dirs.models):
@@ -31,17 +31,18 @@ class PPOAgent(Agent):
         action, _ = self._model.predict(flat_obs, deterministic=True)
         return action
 
-    def train(self, timesteps: int, num_checkpoints=4):
+    def train(self, timesteps: int, num_checkpoints=4, eval_env: SettableGoalEnv = None):
         ppo_offset = 128
+        env = self._env if eval_env is None else eval_env
         cb = make_callback(timesteps=timesteps, num_checkpoints=num_checkpoints,
-                           dirs=self._dirs, agent=self, env=self._env)
+                           dirs=self._dirs, agent=self, env=env)
         self._model.learn(total_timesteps=timesteps+ppo_offset, callback=cb)
 
 
 class HERSACAgent(Agent):
     def __init__(self, env: SettableGoalEnv):
-        self._dirs = Dirs(experiment_name="her-sac-" + type(env).__name__)
         self._env = env
+        self._dirs = Dirs(experiment_name="her-sac-" + type(env).__name__)
         options = {"env": env, "tensorboard_log": self._dirs.tensorboard, "model_class": SAC}
         if os.path.isdir(self._dirs.models):
             self._model = HER.load(load_path=self._dirs.best_model, **options)
@@ -53,9 +54,10 @@ class HERSACAgent(Agent):
         action, _ = self._model.predict(obs, deterministic=True)
         return action
 
-    def train(self, timesteps: int) -> None:
+    def train(self, timesteps: int, eval_env: SettableGoalEnv = None) -> None:
         num_checkpoints = 4
-        cb = make_callback(timesteps, num_checkpoints, self._dirs, self, self._env)
+        env = self._env if eval_env is None else eval_env
+        cb = make_callback(timesteps, num_checkpoints, self._dirs, self, env)
         self._model.learn(total_timesteps=timesteps, callback=cb)
 
 
