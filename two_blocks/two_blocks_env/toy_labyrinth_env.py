@@ -1,6 +1,6 @@
 import time
 from itertools import cycle
-from typing import Sequence, List, Mapping
+from typing import Sequence, List, Mapping, Optional
 import gym
 import numpy as np
 from sklearn.preprocessing import MinMaxScaler
@@ -110,7 +110,12 @@ class ToyLab(SettableGoalEnv):
                            desired_goal=self._normalized_goal)
 
     @typechecked
-    def set_possible_goals(self, goals: np.ndarray) -> None:
+    def set_possible_goals(self, goals: Optional[np.ndarray], entire_space=False) -> None:
+        if goals is None and entire_space:
+            self._possible_normalized_goals = None
+            self._successes_per_goal = dict()
+            return
+
         assert goals.shape[1] == self.observation_space["desired_goal"].shape[0]
         self._possible_normalized_goals = cycle(np.random.permutation(goals))
         self._successes_per_goal = {tuple(g): [] for g in goals}

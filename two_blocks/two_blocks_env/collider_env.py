@@ -2,7 +2,7 @@ import os
 import time
 from abc import ABC
 from itertools import cycle
-from typing import Sequence, Tuple, Mapping, List
+from typing import Sequence, Tuple, Mapping, List, Optional
 from collections import OrderedDict
 
 import numpy as np
@@ -34,7 +34,7 @@ class SettableGoalEnv(ABC, gym.GoalEnv):
     max_episode_len: int
     starting_obs: np.ndarray
 
-    def set_possible_goals(self, goals: np.ndarray) -> None:
+    def set_possible_goals(self, goals: Optional[np.ndarray], entire_space=False) -> None:
         raise NotImplementedError
 
     def get_successes_of_goals(self) -> Mapping[GoalHashable, List[bool]]:
@@ -60,7 +60,7 @@ class ColliderEnv(SettableGoalEnv):
     _ball_initial_pos = [0, 0, _ball_radius]
     _viz_lock_taken = False
 
-    def __init__(self, visualize: bool = True, max_episode_len: int = 200):
+    def __init__(self, visualize: bool = True, max_episode_len: int = 200, seed=0):
         self._visualize = visualize
         if visualize:
             assert not self._viz_lock_taken, "only one environment can be visualized simultaneously"
@@ -135,6 +135,11 @@ class ColliderEnv(SettableGoalEnv):
         assert goals.shape[1] == self.observation_space["desired_goal"].shape[0]
         self._possible_goals = cycle(np.random.permutation(goals))
         self._successes_per_goal = {tuple(g): [] for g in goals}
+
+    def seed(self, seed=None):
+        self.observation_space.seed(seed)
+        self.action_space.seed(seed)
+        np.random.seed(seed)
 
 
 def distance(x1: np.ndarray, x2: np.ndarray):

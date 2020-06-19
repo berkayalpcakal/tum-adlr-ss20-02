@@ -3,6 +3,7 @@ from two_blocks_env.toy_labyrinth_env import _initial_pos, _normalize, \
     _denormalize
 import numpy as np
 
+
 def test_compute_reward():
     for _ in range(5):
         g = ToyLab.observation_space["desired_goal"].sample()
@@ -32,12 +33,17 @@ def test_are_on_same_side_of_wall():
 def test_setting_goals_at_runtime():
     my_goals = [tuple(ToyLab.observation_space["desired_goal"].sample()) for _ in range(3)]
     env = ToyLab()
+    env.seed(0)
     for _ in range(3):
         assert tuple(env.reset().desired_goal) not in my_goals
 
     env.set_possible_goals(np.array(my_goals))
     for _ in range(3):
         assert tuple(env.reset().desired_goal) in my_goals
+
+    env.set_possible_goals(None, entire_space=True)
+    for _ in range(3):
+        assert tuple(env.reset().desired_goal) not in my_goals
 
 
 def test_get_goal_successes():
@@ -64,6 +70,7 @@ def test_moving_one_step_away_from_goal_still_success():
     obs, r, done, info = env.step(env.action_space.high)
     assert info["is_success"] == 1
     assert env.compute_reward(obs.achieved_goal, obs.desired_goal, None) == env.reward_range[1]
+
 
 def test_seed_determines_trajectories():
     assert ToyLab(seed=0).reset() == ToyLab(seed=0).reset()
