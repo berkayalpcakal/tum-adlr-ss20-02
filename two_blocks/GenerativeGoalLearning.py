@@ -31,7 +31,7 @@ class Agent:
     def __call__(self, obs: Observation) -> np.ndarray:
         raise NotImplementedError
 
-    def train(self, timesteps: int, callback: Callable = None) -> None:
+    def train(self, timesteps: int) -> None:
         raise NotImplementedError
 
 
@@ -164,12 +164,13 @@ def trajectory(π: Agent, env: SettableGoalEnv, goal: np.ndarray = None,
 
 
 def evaluate(agent: Agent, env: SettableGoalEnv):
-    goals = np.mgrid[-1:1:20j, -1:1:20j].reshape((2, -1)).T
+    goals = np.mgrid[-1:1:10j, -1:1:10j].reshape((2, -1)).T
     env.set_possible_goals(goals)
     for _ in goals:
         consume(trajectory(agent, env))
     reached = np.array([goal for goal, successes in env.get_successes_of_goals().items() if successes[0]])
     not_reached = np.array([goal for goal, successes in env.get_successes_of_goals().items() if not successes[0]])
+    env.set_possible_goals(goals=None, entire_space=True)
     env.render(other_positions={"red": not_reached, "green": reached},
                show_cur_agent_and_goal_pos=False)
 

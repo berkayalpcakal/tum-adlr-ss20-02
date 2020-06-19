@@ -1,41 +1,9 @@
-import os
-from typing import Tuple
 import click
-from stable_baselines.common import BaseRLModel
-from stable_baselines.common.callbacks import CheckpointCallback
-from stable_baselines import HER, SAC, PPO2
 
 from GenerativeGoalLearning import trajectory, Agent, evaluate
-from ppo_agent import PPOAgent
+from agents import PPOAgent, HERSACAgent
 from two_blocks_env.collider_env import SettableGoalEnv
-from utils import Dirs
 from two_blocks_env.toy_labyrinth_env import ToyLab
-
-
-def train(model_class: type(BaseRLModel), dirs: Dirs, num_steps: int):
-    num_checkpoints = 4
-    env = ToyLab()
-    options = {"env": env, "tensorboard_log": dirs.tensorboard}
-    if os.path.isdir(dirs.models):
-        model = model_class.load(load_path=dirs.best_model, **options)
-    else:
-        if model_class == HER:
-            options.update(model_class=SAC)
-        model = model_class(policy='MlpPolicy', verbose=1, **options)
-
-    cb = CheckpointCallback(save_freq=num_steps//num_checkpoints, save_path=dirs.models, name_prefix=dirs.prefix)
-    model.learn(total_timesteps=num_steps, callback=cb)
-
-
-def load_agent(model_class: type(BaseRLModel), dirs: Dirs) -> Tuple[Agent, SettableGoalEnv]:
-    env = ToyLab()
-    if model_class == HER:
-        model = model_class.load(load_path=dirs.best_model, env=env)
-        agent = lambda obs: model.predict(obs, deterministic=True)[0]
-    else:
-        agent = PPOAgent(env=env, loadpath=dirs.best_model)
-    print(f"Loaded model {dirs.best_model}")
-    return agent, env
 
 
 def viz(agent: Agent, env: SettableGoalEnv):
@@ -46,6 +14,11 @@ def viz(agent: Agent, env: SettableGoalEnv):
         print(f"Episode len: {run(g)}")
 
 
+class Algs:
+    HERSAC = "her-sac"
+    PPO    = "ppo"
+
+
 class Mode:
     TRAIN = "train"
     VIZ   = "viz"
@@ -54,16 +27,20 @@ class Mode:
 
 @click.command()
 @click.option("--mode", type=click.Choice([Mode.TRAIN, Mode.VIZ, Mode.EVAL]))
-@click.option("--alg", type=click.Choice(['her-sac', 'goalgan-ppo']), default="her-sac", help="Algorithm: 'her' (HER+SAC) or 'gaolgan-ppo' available.")
+@click.option("--alg", type=click.Choice(['her-sac', 'ppo']), default="her-sac", help="Algorithm: 'her' (HER+SAC) or 'ppo' available.")
 @click.option("--num_steps", default=100000, show_default=True)
 def main(mode: str, alg: str, num_steps: int):
-    model_class = HER if alg == "her-sac" else PPO2
-    dirs = Dirs(experiment_name=f"{alg}-toylab")
-    if mode == Mode.TRAIN:
-        return train(model_class=model_class, dirs=dirs, num_steps=num_steps)
+    env = ToyLab()
+    if alg == Algs.HERSAC:
+        agent = HERSACAgent(env=env)
+    elif alg == Algs.PPO:
+        agent = PPOAgent(env=env, verbose=1)
+    else:
+        raise NotImplementedError
 
-    agent, env = load_agent(model_class=model_class, dirs=dirs)
-    if mode == Mode.VIZ:
+    if mode == Mode.TRAIN:
+        return agent.train(timesteps=num_steps)
+    elif mode == Mode.VIZ:
         return viz(agent=agent, env=env)
     elif mode == Mode.EVAL:
         while True:

@@ -1,7 +1,7 @@
 import warnings
 from GenerativeGoalLearning import initialize_GAN, update_and_eval_policy, \
     label_goals, train_GAN, sample, update_replay
-from ppo_agent import PPOAgent
+from agents import PPOAgent
 from two_blocks_env.collider_env import dim_goal
 import numpy as np
 import torch
