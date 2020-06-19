@@ -75,18 +75,20 @@ def update_and_eval_policy(goals: Goals, π: Agent, env: SettableGoalEnv) -> Tup
     returns = [np.mean(episode_successes_per_goal[tuple(g)]) for g in goals.numpy()]
     return π, returns
 
+
 def eval_policy(goals: Goals, π: Agent, env: SettableGoalEnv):
     for g in goals:
         for obs, action, reward, next_obs, done, info in trajectory(π, env, goal=g):
             if info.get("is_success"):
                 break
-    import pdb; pdb.set_trace()
     episode_successes_per_goal = env.get_successes_of_goals()
     returns = [np.mean(episode_successes_per_goal[tuple(g)]) for g in goals.numpy()]
     return returns
 
+
 def label_goals(returns: Returns) -> Sequence[int]:
     return [int(Rmin <= r <= Rmax) for r in returns]
+
 
 @print_message("Training GAN on current goals")
 def train_GAN(goals: Goals, labels: Sequence[int], goalGAN):
@@ -120,6 +122,7 @@ def train_GAN(goals: Goals, labels: Sequence[int], goalGAN):
 
     return goalGAN
 
+
 @print_message("Updating the regularized replay buffer")
 def update_replay(goals: Tensor, goals_old: Tensor):
     eps = 0.1
@@ -128,6 +131,7 @@ def update_replay(goals: Tensor, goals_old: Tensor):
         if not g_is_close_to_goals_old:
             goals_old = torch.cat((g[None], goals_old))
     return goals_old
+
 
 def trajectory(π: Agent, env: SettableGoalEnv, goal: np.ndarray = None,
                sleep_secs: float = 0, render=False, print_every: int = None):

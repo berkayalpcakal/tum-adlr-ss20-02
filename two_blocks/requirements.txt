@@ -7,3 +7,5 @@ stable-baselines
 click
 typeguard
 scikit-learn
+torchsummary
+

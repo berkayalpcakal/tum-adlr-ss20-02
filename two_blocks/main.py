@@ -1,6 +1,6 @@
 import warnings
 from GenerativeGoalLearning import initialize_GAN, update_and_eval_policy, \
-    label_goals, train_GAN, sample, eval_policy, update_replay
+    label_goals, train_GAN, sample, update_replay
 from ppo_agent import PPOAgent
 from two_blocks_env.collider_env import dim_goal
 import numpy as np
@@ -47,8 +47,6 @@ summary(goalGAN.Generator,     input_size=(1,1,4), device='cpu')
 summary(goalGAN.Discriminator, input_size=(1,1,2), device='cpu')
 goalGAN.Generator=goalGAN.Generator.double(); goalGAN.Discriminator=goalGAN.Discriminator.double()
 #######################
-
-import pdb; pdb.set_trace()
 
 ## Initial training of the policy with random goals
 goals_plot = None
