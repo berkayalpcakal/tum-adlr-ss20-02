@@ -10,8 +10,10 @@ import torch.nn as nn
 from torch.distributions import Distribution, MultivariateNormal as MVNormal
 from torch.distributions.kl import kl_divergence as KL
 
+from GenerativeGoalLearning import Agent, trajectory, consume, evaluate
 from agents import HERSACAgent
 from two_blocks_env.collider_env import Observation, SettableGoalEnv
+from two_blocks_env.toy_labyrinth_env import ToyLab
 
 ObservationSeq = Sequence[Observation]
 GaussianPolicy = Callable[[ObservationSeq], List[Distribution]]
@@ -64,3 +66,35 @@ class ActionableRep(nn.Module):
 
     def forward(self, x: Tensor) -> Tensor:
         return self.layers(x)
+
+
+class ARCAgent(Agent):
+    def __init__(self):
+        self._phi = ActionableRep(2)
+        self._phi.load_state_dict(torch.load("arc.pt"))
+        self._x = torch.zeros(2, requires_grad=True)
+        self._opt = torch.optim.Adam([self._x], lr=2)
+
+    def __call__(self, obs: Observation) -> np.ndarray:
+        self._opt.zero_grad()
+        cur_x = torch.from_numpy(obs.achieved_goal).float()
+        self._x.data = cur_x.clone()
+        goal = torch.from_numpy(obs.desired_goal).float()
+        loss = torch.dist(self._phi(goal), self._phi(self._x))
+        loss.backward()
+        self._opt.step()
+        return torch.clamp((self._x - cur_x), min=-1, max=1).detach().numpy()
+
+    def train(self, timesteps: int) -> None:
+        raise NotImplementedError("The ARC agent is already trained.")
+
+
+if __name__ == '__main__':
+    agent = ARCAgent()
+    env = ToyLab()
+    evaluate(agent, env)
+    input("exit")
+    # goals = np.mgrid[0.5:1:5j, -1:1:5j].reshape((2, -1)).T
+    # env.set_possible_goals(goals)
+    # while True:
+    #     consume(trajectory(agent, env, sleep_secs=0.1, render=True))
