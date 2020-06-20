@@ -67,7 +67,7 @@ def avg_Dact(dataset: ObservationSeq, pi: GaussianPolicy):
 
 if __name__ == '__main__':
     plt.ion()
-    env = ToyLab()
+    env = ToyLab(use_random_starting_pos=True)
     agent = HERSACAgent(env=env)
     gaussian_pi = get_gaussian_pi(agent, env)
 
@@ -75,7 +75,7 @@ if __name__ == '__main__':
     bins = np.bincount(traj_lens)
     fig, ax = plt.subplots()
     ax.bar(range(len(bins)), bins)
-    env = ToyLab(max_episode_len=int(2*np.mean(traj_lens)))
+    env = ToyLab(max_episode_len=int(2*np.mean(traj_lens)), use_random_starting_pos=True)
 
     traj_gen = ([step[3] for step in trajectory(agent, env)] for _ in count())
     phi = ActionableRep(input_size=env.observation_space["achieved_goal"].shape[0])

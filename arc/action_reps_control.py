@@ -70,10 +70,13 @@ class ActionableRep(nn.Module):
 
 class ARCAgent(Agent):
     def __init__(self):
-        self._phi = ActionableRep(2)
+        self._phi = ActionableRep(input_size=2)
         self._phi.load_state_dict(torch.load("arc.pt"))
         self._x = torch.zeros(2, requires_grad=True)
-        self._opt = torch.optim.Adam([self._x], lr=2)
+        self._opt = self._make_opt()
+
+    def _make_opt(self):
+        return torch.optim.Adam([self._x], lr=0.8)
 
     def __call__(self, obs: Observation) -> np.ndarray:
         self._opt.zero_grad()
@@ -88,13 +91,19 @@ class ARCAgent(Agent):
     def train(self, timesteps: int) -> None:
         raise NotImplementedError("The ARC agent is already trained.")
 
+    def reset_momentum(self):
+        self._opt = self._make_opt()
+
 
 if __name__ == '__main__':
     agent = ARCAgent()
-    env = ToyLab()
-    evaluate(agent, env)
-    input("exit")
-    # goals = np.mgrid[0.5:1:5j, -1:1:5j].reshape((2, -1)).T
-    # env.set_possible_goals(goals)
-    # while True:
-    #     consume(trajectory(agent, env, sleep_secs=0.1, render=True))
+    env = ToyLab(max_episode_len=140)
+    # evaluate(agent, env, very_granular=False)
+    # input("exit")
+
+    goals = np.mgrid[-1:0:5j, 0:1:5j].reshape((2, -1)).T
+    env.set_possible_goals(goals)
+    while True:
+        traj_len = sum(1 for _ in trajectory(agent, env, sleep_secs=0.05, render=True))
+        print(f"Trajectory length: {traj_len}")
+        agent.reset_momentum()
