@@ -1,5 +1,7 @@
 import os
 import warnings
+from datetime import datetime
+
 import numpy as np
 from stable_baselines.common.callbacks import CheckpointCallback, BaseCallback, CallbackList
 from stable_baselines.common.vec_env import DummyVecEnv
@@ -64,18 +66,19 @@ class HERSACAgent(Agent):
 def make_callback(timesteps: int, num_checkpoints: int, dirs: Dirs, agent: Agent, env: SettableGoalEnv):
     return CallbackList([
         CheckpointCallback(save_freq=timesteps//num_checkpoints, save_path=dirs.models, name_prefix=dirs.prefix),
-        EvalCallback(freq=timesteps//num_checkpoints, agent=agent, env=env)
+        EvalCallback(agent=agent, env=env)
     ])
 
 
 class EvalCallback(BaseCallback):
-    def __init__(self, freq: int, agent: Agent, env: SettableGoalEnv):
+    def __init__(self, agent: Agent, env: SettableGoalEnv):
         super().__init__()
-        self._freq = freq
         self._agent = agent
         self._settable_goal_env = env
+        self._last_eval = datetime.now()
 
     def _on_step(self) -> bool:
-        if self.n_calls % self._freq == 0:
+        if (datetime.now() - self._last_eval).seconds > 10:
             evaluate(agent=self._agent, env=self._settable_goal_env)
+            self._last_eval = datetime.now()
         return True

@@ -162,8 +162,10 @@ def trajectory(π: Agent, env: SettableGoalEnv, goal: np.ndarray = None,
             break
 
 
-def evaluate(agent: Agent, env: SettableGoalEnv):
-    goals = np.mgrid[-1:1:10j, -1:1:10j].reshape((2, -1)).T
+def evaluate(agent: Agent, env: SettableGoalEnv, very_granular=False):
+    coarseness = complex(0, 30 if very_granular else 10)
+    goals = np.mgrid[-1:1:coarseness, -1:1:coarseness].reshape((2, -1)).T
+    env.seed(0)
     env.set_possible_goals(goals)
     for _ in goals:
         consume(trajectory(agent, env))
