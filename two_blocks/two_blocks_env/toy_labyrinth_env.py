@@ -74,7 +74,7 @@ class ToyLab(SettableGoalEnv):
     def _new_initial_pos(self) -> np.ndarray:
         if not self._use_random_starting_pos:
             return _initial_pos
-        return _denormalize(self._sample_new_normalized_goal())
+        return _denormalize(self.observation_space["desired_goal"].sample())
 
     def _sample_new_normalized_goal(self) -> Goal:
         if self._possible_normalized_goals is None:
@@ -83,7 +83,7 @@ class ToyLab(SettableGoalEnv):
 
     def step(self, action: np.ndarray):
         action = np.array(action)
-        assert self.action_space.contains(action), action
+        assert self.action_space.contains(action*0.99), f"Action is not within 1% bounds: {action}"
         self._step_num += 1
         self._cur_pos = simulation_step(cur_pos=self._cur_pos, action=action)
         obs = self._make_obs()

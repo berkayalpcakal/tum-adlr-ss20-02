@@ -85,6 +85,7 @@ def latest_model(foldername: str):
         return model_names[0]
     prefix_less, prefix = remove_common_prefix(model_names)
     nums_only, suffix = remove_common_suffix(prefix_less)
+    assert "" not in nums_only, "Can't find best model, because step nums are interpreted as name prefix."
     latest_num = max(int(n) for n in nums_only)
     return f"{prefix}{latest_num}{suffix}"
 
