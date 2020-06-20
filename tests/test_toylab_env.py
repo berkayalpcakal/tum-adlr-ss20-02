@@ -1,3 +1,5 @@
+from itertools import combinations
+from two_blocks_env.collider_env import Observation
 from two_blocks_env.toy_labyrinth_env import _initial_pos, _normalize, \
     _labyrinth_upper_bound, _labyrinth_lower_bound, _are_on_same_side_of_wall, ToyLab, \
     _denormalize
@@ -91,3 +93,10 @@ def test_seed_determines_trajectories():
     assert np.allclose(actions, mk_actions())
     assert obss == mk_obs()
     assert trajectory == [env.step(a) for a in actions]
+
+
+def test_with_radnom_starting_states():
+    env = ToyLab(use_random_starting_pos=True)
+    o1: Observation
+    for o1, o2 in combinations([env.reset() for _ in range(5)], 2):
+        assert not np.allclose(o1.achieved_goal, o2.achieved_goal)

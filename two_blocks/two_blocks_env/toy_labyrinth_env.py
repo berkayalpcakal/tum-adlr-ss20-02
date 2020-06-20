@@ -58,19 +58,25 @@ class ToyLab(SettableGoalEnv):
     reward_range = (-1, 0)
     starting_obs = _normalize(_initial_pos)  # normalized because public
 
-    def __init__(self, max_episode_len: int = 80, seed=0):
+    def __init__(self, max_episode_len: int = 80, seed=0, use_random_starting_pos=False):
         super().__init__()
         self.max_episode_len = max_episode_len
-        self._cur_pos = _initial_pos
-        self._step_num = 0
         self._possible_normalized_goals = None
-        self._normalized_goal = self._sample_new_goal()
+        self._use_random_starting_pos = use_random_starting_pos
+        self._cur_pos = self._new_initial_pos()
+        self._normalized_goal = self._sample_new_normalized_goal()
         self.seed(seed)
         self._successes_per_goal: Mapping[GoalHashable, List[bool]] = dict()
         self._plot = None
         self._labyrinth_corners = labyrinth_corners
+        self._step_num = 0
 
-    def _sample_new_goal(self) -> Goal:
+    def _new_initial_pos(self) -> np.ndarray:
+        if not self._use_random_starting_pos:
+            return _initial_pos
+        return _denormalize(self._sample_new_normalized_goal())
+
+    def _sample_new_normalized_goal(self) -> Goal:
         if self._possible_normalized_goals is None:
             return self.observation_space["desired_goal"].sample()
         return next(self._possible_normalized_goals)
@@ -99,9 +105,9 @@ class ToyLab(SettableGoalEnv):
 
     def reset(self) -> Observation:
         super().reset()
-        self._cur_pos = _initial_pos
+        self._cur_pos = self._new_initial_pos()
         self._step_num = 0
-        self._normalized_goal = self._sample_new_goal()
+        self._normalized_goal = self._sample_new_normalized_goal()
         return self._make_obs()
 
     def _make_obs(self) -> Observation:
