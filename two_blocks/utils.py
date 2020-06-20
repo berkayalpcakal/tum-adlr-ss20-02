@@ -1,5 +1,6 @@
 import functools
 import os
+import time
 from pathlib import Path
 from typing import Dict, Sequence, Tuple
 import numpy as np
@@ -13,9 +14,11 @@ def print_message(msg: str):
     def decorator(func):
         @functools.wraps(func)
         def printer(*args, **kwargs):
+            start = time.time()
             print(msg, end=" ", flush=True)
             res = func(*args, **kwargs)
-            print("[DONE]")
+            duration = time.time() - start
+            print(f"DONE. TIME: {duration:.2f} [s]")
             return res
         return printer
     return decorator

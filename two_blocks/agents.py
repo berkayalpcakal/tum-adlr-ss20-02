@@ -45,7 +45,8 @@ class HERSACAgent(Agent):
     def __init__(self, env: SettableGoalEnv):
         self._env = env
         self._dirs = Dirs(experiment_name="her-sac-" + type(env).__name__)
-        options = {"env": env, "tensorboard_log": self._dirs.tensorboard, "model_class": SAC}
+        options = {"env": env, "tensorboard_log": self._dirs.tensorboard, "model_class": SAC,
+                   "policy_kwargs": dict(layers=[256]*4)}
         if os.path.isdir(self._dirs.models):
             self._model = HER.load(load_path=self._dirs.best_model, **options)
             print(f"Loaded model {self._dirs.best_model}")
@@ -78,7 +79,7 @@ class EvalCallback(BaseCallback):
         self._last_eval = datetime.now()
 
     def _on_step(self) -> bool:
-        if (datetime.now() - self._last_eval).seconds > 10:
+        if (datetime.now() - self._last_eval).seconds > 20:
             evaluate(agent=self._agent, env=self._settable_goal_env)
             self._last_eval = datetime.now()
         return True

@@ -44,7 +44,7 @@ def main(mode: str, alg: str, num_steps: int, random_starts: bool):
     if mode == Mode.TRAIN:
         return agent.train(timesteps=num_steps, eval_env=fixed_start_obs_env)
     elif mode == Mode.VIZ:
-        return viz(agent=agent, env=fixed_start_obs_env)
+        return viz(agent=agent, env=env)
     elif mode == Mode.EVAL:
         while True:
             evaluate(agent=agent, env=fixed_start_obs_env, very_granular=True)
