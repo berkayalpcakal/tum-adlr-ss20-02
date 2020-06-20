@@ -50,7 +50,7 @@ class ActionableRep(nn.Module):
     def __init__(self, input_size: int = 2):
         super().__init__()
         hidden_layer_size = 128
-        acr_size = 2
+        acr_size = 3
 
         self.layers = nn.Sequential(
             nn.Linear(input_size, hidden_layer_size),

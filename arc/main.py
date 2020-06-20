@@ -7,7 +7,7 @@ from typing import Iterable
 import matplotlib.pyplot as plt
 import torch
 import numpy as np
-from torch.optim.adam import Adam
+from torch.optim.adamw import AdamW
 
 from GenerativeGoalLearning import trajectory
 from agents import HERSACAgent
@@ -40,6 +40,7 @@ def init_viz():
     viztime = {"last": datetime.now()}
 
     def viz(phi: ActionableRep):
+        return
         if (datetime.now() - viztime["last"]).seconds < 2:
             return
         out = phi(Tensor(Xs.T)).detach().numpy()
@@ -76,14 +77,13 @@ if __name__ == '__main__':
     fig, ax = plt.subplots()
     ax.bar(range(len(bins)), bins)
     env = ToyLab(max_episode_len=int(2*np.mean(traj_lens)), use_random_starting_pos=True)
-
     traj_gen = ([step[3] for step in trajectory(agent, env)] for _ in count())
     phi = ActionableRep(input_size=env.observation_space["achieved_goal"].shape[0])
     fname = "arc.pt"
     if os.path.isfile(fname):
         phi.load_state_dict(torch.load(fname))
         print("loaded previous state")
-    optimizer = Adam(phi.parameters(), lr=1e-4)
+    optimizer = AdamW(phi.parameters(), lr=1e-3)
     loss_fn = nn.MSELoss()
     num_epochs = 100
     num_trajectories = 200
@@ -119,4 +119,4 @@ if __name__ == '__main__':
             viz(phi)
         if epoch % 10 == 0:
             torch.save(phi.state_dict(), fname)
-        print(f"Epoch finished: {epoch}, loss: {np.mean(losses):.2f}", flush=True)
+        print(f"Epoch finished: {epoch}, loss: {np.mean(losses):.3f}", flush=True)

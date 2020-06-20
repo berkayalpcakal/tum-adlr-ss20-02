@@ -46,7 +46,7 @@ class HERSACAgent(Agent):
         self._env = env
         self._dirs = Dirs(experiment_name="her-sac-" + type(env).__name__)
         options = {"env": env, "tensorboard_log": self._dirs.tensorboard, "model_class": SAC,
-                   "policy_kwargs": dict(layers=[256]*4)}
+                   "policy_kwargs": dict(layers=[128]*2)}
         if os.path.isdir(self._dirs.models):
             self._model = HER.load(load_path=self._dirs.best_model, **options)
             print(f"Loaded model {self._dirs.best_model}")
