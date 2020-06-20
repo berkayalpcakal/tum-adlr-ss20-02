@@ -40,9 +40,6 @@ def get_updateable_scatter():
             else:
                 scatters[name] = ax.scatter(*pts.T, *args, **kwargs)
 
-        fig.canvas.draw()
-        fig.canvas.flush_events()
-
     return fig, ax, scatter
 
 def display_goals(goals: np.ndarray, returns, idx, env: SettableGoalEnv, fileNamePrefix = 'goals'):

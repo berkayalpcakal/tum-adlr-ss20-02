@@ -51,6 +51,9 @@ def init_plot(target, title: str = None):
         if rand_goals is not None:
             scatter_fn(name="rand_goals", pts=rand_goals.detach().numpy(), color="gray")
 
+        fig.canvas.draw()
+        fig.canvas.flush_events()
+
         return fig
 
     return plot_goals

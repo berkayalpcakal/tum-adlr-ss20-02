@@ -153,6 +153,9 @@ class ToyLab(SettableGoalEnv):
         scatter_fn(name="agent_pos", pts=agent_pos)
         scatter_fn(name="goal", pts=goal, c="green")
 
+        fig.canvas.draw()
+        fig.canvas.flush_events()
+
         return fig, ax
 
 
