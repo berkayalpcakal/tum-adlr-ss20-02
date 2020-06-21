@@ -29,6 +29,9 @@ class Observation(OrderedDict):
     def __eq__(self, other):
         return all(np.allclose(other[k], v) for k, v in self.items())
 
+    def __ne__(self, other):
+        return not self.__eq__(other)
+
 
 class SettableGoalEnv(ABC, gym.GoalEnv):
     max_episode_len: int
@@ -42,7 +45,7 @@ class SettableGoalEnv(ABC, gym.GoalEnv):
 
 
 class ColliderEnv(SettableGoalEnv):
-
+    reward_range = (-1, 0)
     action_space = spaces.Box(low=-1, high=1, shape=(2,), dtype=np.float)
     _action_tol = 0.01
     goal_space = spaces.Box(low=-2, high=2, shape=(2,), dtype=np.float)
@@ -57,10 +60,12 @@ class ColliderEnv(SettableGoalEnv):
 
     _ball_radius = 0.3
     _green_ball_initial_pos = [2, 0, _ball_radius]
-    _ball_initial_pos = [0, 0, _ball_radius]
+    _red_ball_initial_pos = [0, 0, _ball_radius]
     _viz_lock_taken = False
+    starting_obs = np.array(_red_ball_initial_pos[:2])
 
     def __init__(self, visualize: bool = False, max_episode_len: int = 200, seed=0):
+        self.seed(seed)
         self._visualize = visualize
         if visualize:
             assert not self._viz_lock_taken, "only one environment can be visualized simultaneously"
@@ -70,9 +75,10 @@ class ColliderEnv(SettableGoalEnv):
         self._bullet.setAdditionalSearchPath(pybullet_data.getDataPath())  # used by loadURDF
         self._bullet.setGravity(0, 0, -9.81)
         self._bullet.loadURDF("plane.urdf")
-        self._ball = self._bullet.loadURDF(self._red_ball_fname, self._ball_initial_pos)
+        self._ball = self._bullet.loadURDF(self._red_ball_fname, self._red_ball_initial_pos)
         self._target_ball = self._bullet.loadURDF(self._green_ball_fname, self._green_ball_initial_pos, useFixedBase=1)
 
+        self._possible_normalized_goals = None
         self._desired_goal = np.ones(2) * 5
         self.max_episode_len = max_episode_len
         self._step_num = 0
@@ -116,30 +122,34 @@ class ColliderEnv(SettableGoalEnv):
 
     def reset(self):
         self._step_num = 0
-        _reset_object(self._bullet, self._ball, pos=self._ball_initial_pos)
-        random_goal = self.observation_space["desired_goal"].sample()
-        _reset_object(self._bullet, self._target_ball, pos=[*random_goal, self._ball_radius])
-        self.set_goal(_position(self._bullet.getBasePositionAndOrientation(self._target_ball)))
+        _reset_object(self._bullet, self._ball, pos=self._red_ball_initial_pos)
+        self._desired_goal = self._sample_new_normalized_goal()
+        _reset_object(self._bullet, self._target_ball, pos=[*self._desired_goal, self._ball_radius])
         return self._get_obs()
 
     def render(self, mode='human'):
         pass
 
-    def set_goal(self, new_goal: np.ndarray):
-        assert isinstance(new_goal, np.ndarray)
-        assert self.observation_space["desired_goal"].contains(new_goal)
-        _reset_object(self._bullet, self._target_ball, pos=[*new_goal, self._ball_radius])
-        self._desired_goal = new_goal
+    def set_possible_goals(self, goals: Optional[np.ndarray], entire_space=False) -> None:
+        if goals is None and entire_space:
+            self._possible_normalized_goals = None
+            self._successes_per_goal = dict()
+            return
 
-    def set_possible_goals(self, goals: np.ndarray) -> None:
+        assert len(goals.shape) == 2, f"Goals must have shape (N, 2), instead: {goals.shape}"
         assert goals.shape[1] == self.observation_space["desired_goal"].shape[0]
-        self._possible_goals = cycle(np.random.permutation(goals))
+        self._possible_normalized_goals = cycle(np.random.permutation(goals))
         self._successes_per_goal = {tuple(g): [] for g in goals}
 
     def seed(self, seed=None):
         self.observation_space.seed(seed)
         self.action_space.seed(seed)
         np.random.seed(seed)
+
+    def _sample_new_normalized_goal(self) -> Goal:
+        if self._possible_normalized_goals is None:
+            return self.observation_space["desired_goal"].sample()
+        return next(self._possible_normalized_goals)
 
 
 def distance(x1: np.ndarray, x2: np.ndarray):
@@ -174,7 +184,7 @@ def dim_goal(env: gym.GoalEnv):
 
 
 if __name__ == '__main__':
-    env = ColliderEnv()
+    env = ColliderEnv(visualize=True)
     while True:
         env.step([0, 0])
         time.sleep(1/240)

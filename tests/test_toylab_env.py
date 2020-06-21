@@ -9,11 +9,15 @@ from multi_goal.envs.toy_labyrinth_env import _initial_pos, _normalize, \
     _denormalize
 import numpy as np
 
+from tests.test_collider_env import env_fns
 
-def test_compute_reward():
+
+@pytest.mark.parametrize("env_fn", env_fns)
+def test_compute_reward(env_fn):
+    env = env_fn()
     for _ in range(5):
-        g = ToyLab.observation_space["desired_goal"].sample()
-        assert ToyLab.compute_reward(g, g, None) == max(ToyLab.reward_range)
+        g = env.observation_space["desired_goal"].sample()
+        assert env.compute_reward(g, g, None) == max(env.reward_range)
 
 
 def test_normalization():
@@ -36,10 +40,10 @@ def test_are_on_same_side_of_wall():
     assert not _are_on_same_side_of_wall(below_wall, above_wall)
 
 
-def test_setting_goals_at_runtime():
-    my_goals = [tuple(ToyLab.observation_space["desired_goal"].sample()) for _ in range(3)]
-    env = ToyLab()
-    env.seed(0)
+@pytest.mark.parametrize("env_fn", env_fns)
+def test_setting_goals_at_runtime(env_fn):
+    env = env_fn()
+    my_goals = [tuple(env.observation_space["desired_goal"].sample()) for _ in range(3)]
     for _ in range(3):
         assert tuple(env.reset().desired_goal) not in my_goals
 
@@ -73,20 +77,22 @@ def test_get_goal_successes(use_random_starting_pos: bool):
     assert len(successes[tuple(difficult_goal)]) == 0
 
 
-def test_moving_one_step_away_from_goal_still_success():
-    env = ToyLab()
+@pytest.mark.parametrize("env_fn", env_fns)
+def test_moving_one_step_away_from_goal_still_success(env_fn):
+    env = env_fn()
     env.set_possible_goals(env.starting_obs[np.newaxis])
-    obs = env.reset()
+    env.reset()
     obs, r, done, info = env.step(env.action_space.high)
     assert info["is_success"] == 1
     assert env.compute_reward(obs.achieved_goal, obs.desired_goal, None) == env.reward_range[1]
 
 
-def test_seed_determines_trajectories():
-    assert ToyLab(seed=0).reset() == ToyLab(seed=0).reset()
-    assert ToyLab(seed=0).reset() != ToyLab(seed=1).reset()
+@pytest.mark.parametrize("env_fn", env_fns)
+def test_seed_determines_trajectories(env_fn):
+    assert env_fn(seed=0).reset() == env_fn(seed=0).reset()
+    assert env_fn(seed=0).reset() != env_fn(seed=1).reset()
 
-    env = ToyLab(seed=0)
+    env = env_fn(seed=0)
     env.reset()
 
     mk_actions = lambda: [env.action_space.sample() for _ in range(10)]
@@ -113,7 +119,7 @@ def test_with_random_starting_states():
     for obs in starting_obss:
         assert not np.allclose(obs.achieved_goal, obs.desired_goal)
 
-
-def test_gym_registration_succeded():
-    assert gym.make("ToyLab-v0") is not None, "The gym could not be loaded with gym.make." \
-                                              "Check the env registration string."
+@pytest.mark.parametrize("env_name", ["ToyLab-v0", "Labyrinth-v0"])
+def test_gym_registration_succeded(env_name):
+    assert gym.make(env_name) is not None, "The gym could not be loaded with gym.make." \
+                                           "Check the env registration string."

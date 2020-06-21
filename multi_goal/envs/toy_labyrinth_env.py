@@ -122,6 +122,7 @@ class ToyLab(SettableGoalEnv):
             self._successes_per_goal = dict()
             return
 
+        assert len(goals.shape) == 2, f"Goals must have shape (N, 2), instead: {goals.shape}"
         assert goals.shape[1] == self.observation_space["desired_goal"].shape[0]
         self._possible_normalized_goals = cycle(np.random.permutation(goals))
         self._successes_per_goal = {tuple(g): [] for g in goals}
