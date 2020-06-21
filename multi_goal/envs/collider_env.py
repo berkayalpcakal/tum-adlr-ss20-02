@@ -60,7 +60,7 @@ class ColliderEnv(SettableGoalEnv):
     _ball_initial_pos = [0, 0, _ball_radius]
     _viz_lock_taken = False
 
-    def __init__(self, visualize: bool = True, max_episode_len: int = 200, seed=0):
+    def __init__(self, visualize: bool = False, max_episode_len: int = 200, seed=0):
         self._visualize = visualize
         if visualize:
             assert not self._viz_lock_taken, "only one environment can be visualized simultaneously"
