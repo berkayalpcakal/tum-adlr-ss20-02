@@ -1,3 +1,4 @@
+import os
 import random
 from typing import Sequence, Callable, List
 
@@ -10,10 +11,10 @@ import torch.nn as nn
 from torch.distributions import Distribution, MultivariateNormal as MVNormal
 from torch.distributions.kl import kl_divergence as KL
 
-from GenerativeGoalLearning import Agent, trajectory, consume, evaluate
-from agents import HERSACAgent
-from two_blocks_env.collider_env import Observation, SettableGoalEnv
-from two_blocks_env.toy_labyrinth_env import ToyLab
+from multi_goal.GenerativeGoalLearning import Agent, trajectory
+from multi_goal.agents import HERSACAgent
+from multi_goal.envs.collider_env import Observation, SettableGoalEnv
+from multi_goal.envs.toy_labyrinth_env import ToyLab
 
 ObservationSeq = Sequence[Observation]
 GaussianPolicy = Callable[[ObservationSeq], List[Distribution]]
@@ -69,9 +70,12 @@ class ActionableRep(nn.Module):
 
 
 class ARCAgent(Agent):
+    _fpath = os.path.realpath(os.path.join(os.getcwd(), os.path.dirname(__file__)))
+    _arc_fpath = os.path.join(_fpath, "arc.pt")
+
     def __init__(self):
         self._phi = ActionableRep(input_size=2)
-        self._phi.load_state_dict(torch.load("arc.pt"))
+        self._phi.load_state_dict(torch.load(self._arc_fpath))
         self._x = torch.zeros(2, requires_grad=True)
         self._opt = self._make_opt()
 

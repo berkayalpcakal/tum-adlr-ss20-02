@@ -3,7 +3,7 @@ import time
 from gym import spaces
 import numpy as np
 
-from two_blocks_env.collider_env import ColliderEnv
+from multi_goal.envs.collider_env import ColliderEnv
 
 
 class Labyrinth(ColliderEnv):

@@ -7,7 +7,7 @@ import numpy as np
 from matplotlib.collections import PathCollection
 import matplotlib.pyplot as plt
 
-from two_blocks_env.collider_env import SettableGoalEnv
+from multi_goal.envs.collider_env import SettableGoalEnv
 
 
 def print_message(msg: str):
@@ -22,6 +22,7 @@ def print_message(msg: str):
             return res
         return printer
     return decorator
+
 
 def get_updateable_scatter():
     plt.ion()
@@ -44,6 +45,7 @@ def get_updateable_scatter():
                 scatters[name] = ax.scatter(*pts.T, *args, **kwargs)
 
     return fig, ax, scatter
+
 
 def display_goals(goals: np.ndarray, returns, idx, env: SettableGoalEnv, fileNamePrefix = 'goals'):
     rewards = np.array(returns)

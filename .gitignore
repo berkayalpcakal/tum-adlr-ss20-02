@@ -9,4 +9,4 @@ profiling*.png
 all-results/
 backup/
 .ipynb_checkpoints/
-two_blocks/figs/
+multi_goal/figs/

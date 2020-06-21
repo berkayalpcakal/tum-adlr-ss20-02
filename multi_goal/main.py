@@ -1,13 +1,13 @@
 import warnings
-from GenerativeGoalLearning import initialize_GAN, update_and_eval_policy, \
+from multi_goal.GenerativeGoalLearning import initialize_GAN, update_and_eval_policy, \
     label_goals, train_GAN, sample, update_replay
-from agents import PPOAgent
-from two_blocks_env.collider_env import dim_goal
+from multi_goal.agents import PPOAgent
+from multi_goal.envs.collider_env import dim_goal
 import numpy as np
 import torch
 from torchsummary import summary
-from two_blocks_env.toy_labyrinth_env import ToyLab
-from utils import display_goals
+from multi_goal.envs.toy_labyrinth_env import ToyLab
+from multi_goal.utils import display_goals
 
 """
 Algorithm in the GAN paper, Florensa 2018 

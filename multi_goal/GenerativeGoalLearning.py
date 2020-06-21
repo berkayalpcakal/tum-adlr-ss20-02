@@ -8,12 +8,11 @@ import numpy as np
 import torch
 from torch import Tensor
 
-from two_blocks_env.collider_env import Observation, SettableGoalEnv, distance, dim_goal
-from LSGAN import LSGAN
+from multi_goal.envs.collider_env import Observation, SettableGoalEnv, distance, dim_goal
+from multi_goal.LSGAN import LSGAN
+from multi_goal.utils import print_message
 
 #### PARAMETERS ####
-from utils import print_message
-
 Rmin = 0.1
 Rmax = 0.9
 

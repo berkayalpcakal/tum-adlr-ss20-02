@@ -1,7 +1,7 @@
 from itertools import count
-from GenerativeGoalLearning import train_GAN
-from LSGAN import LSGAN
-from utils import get_updateable_scatter
+from multi_goal.GenerativeGoalLearning import train_GAN
+from multi_goal.LSGAN import LSGAN
+from multi_goal.utils import get_updateable_scatter
 import torch
 import numpy as np
 import matplotlib.pyplot as plt

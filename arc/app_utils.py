@@ -3,7 +3,7 @@ from typing import Callable
 import gym
 import numpy as np
 from stable_baselines.common import BaseRLModel
-from two_blocks_env.collider_env import Observation
+from multi_goal.envs.collider_env import Observation
 
 
 def vf_for_model(model: BaseRLModel, currentObs: Observation):

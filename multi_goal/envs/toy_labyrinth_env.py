@@ -6,8 +6,8 @@ import numpy as np
 from sklearn.preprocessing import MinMaxScaler
 from typeguard import typechecked
 
-from two_blocks_env.collider_env import Observation, SettableGoalEnv, Goal, GoalHashable
-from utils import get_updateable_scatter
+from multi_goal.envs.collider_env import Observation, SettableGoalEnv, Goal, GoalHashable
+from multi_goal.utils import get_updateable_scatter
 
 middle_wall_len = 12
 sidewall_height = 8

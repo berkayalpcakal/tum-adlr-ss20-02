@@ -1,9 +1,10 @@
 from itertools import combinations
 
+import gym
 import pytest
 
-from two_blocks_env.collider_env import Observation
-from two_blocks_env.toy_labyrinth_env import _initial_pos, _normalize, \
+from multi_goal.envs.collider_env import Observation
+from multi_goal.envs.toy_labyrinth_env import _initial_pos, _normalize, \
     _labyrinth_upper_bound, _labyrinth_lower_bound, _are_on_same_side_of_wall, ToyLab, \
     _denormalize
 import numpy as np
@@ -111,3 +112,8 @@ def test_with_random_starting_states():
 
     for obs in starting_obss:
         assert not np.allclose(obs.achieved_goal, obs.desired_goal)
+
+
+def test_gym_registration_succeded():
+    assert gym.make("ToyLab-v0") is not None, "The gym could not be loaded with gym.make." \
+                                              "Check the env registration string."

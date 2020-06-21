@@ -7,13 +7,13 @@ from stable_baselines.common.callbacks import CheckpointCallback, BaseCallback, 
 from stable_baselines.common.vec_env import DummyVecEnv
 from stable_baselines.her import HERGoalEnvWrapper
 
-from utils import Dirs
+from multi_goal.utils import Dirs
 
 with warnings.catch_warnings():
     warnings.simplefilter(action="ignore", category=FutureWarning)
     from stable_baselines import PPO2, HER, SAC
-from GenerativeGoalLearning import Agent, evaluate
-from two_blocks_env.collider_env import Observation, SettableGoalEnv
+from multi_goal.GenerativeGoalLearning import Agent, evaluate
+from multi_goal.envs.collider_env import Observation, SettableGoalEnv
 
 
 class PPOAgent(Agent):
@@ -67,11 +67,11 @@ class HERSACAgent(Agent):
 def make_callback(timesteps: int, num_checkpoints: int, dirs: Dirs, agent: Agent, env: SettableGoalEnv):
     return CallbackList([
         CheckpointCallback(save_freq=timesteps//num_checkpoints, save_path=dirs.models, name_prefix=dirs.prefix),
-        EvalCallback(agent=agent, env=env)
+        EvaluateCallback(agent=agent, env=env)
     ])
 
 
-class EvalCallback(BaseCallback):
+class EvaluateCallback(BaseCallback):
     def __init__(self, agent: Agent, env: SettableGoalEnv):
         super().__init__()
         self._agent = agent

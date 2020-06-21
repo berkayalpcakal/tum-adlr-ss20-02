@@ -9,11 +9,11 @@ import torch
 import numpy as np
 from torch.optim.adamw import AdamW
 
-from GenerativeGoalLearning import trajectory
-from agents import HERSACAgent
-from action_reps_control import get_gaussian_pi, ActionableRep, ObservationSeq, Dact, \
+from multi_goal.GenerativeGoalLearning import trajectory
+from multi_goal.agents import HERSACAgent
+from arc.action_reps_control import get_gaussian_pi, ActionableRep, ObservationSeq, Dact, \
     GaussianPolicy
-from two_blocks_env.toy_labyrinth_env import ToyLab
+from multi_goal.envs.toy_labyrinth_env import ToyLab
 
 from torch import nn
 from torch import Tensor

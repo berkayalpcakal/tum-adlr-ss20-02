@@ -1,9 +1,9 @@
 import numpy as np
 import pytest
 
-from two_blocks_env.collider_env import ColliderEnv
-from GenerativeGoalLearning import trajectory, null_agent
-from two_blocks_env.toy_labyrinth_env import ToyLab
+from multi_goal.GenerativeGoalLearning import trajectory, null_agent
+from multi_goal.envs.collider_env import ColliderEnv
+from multi_goal.envs.toy_labyrinth_env import ToyLab
 
 NULL_ACTION = np.zeros(shape=ColliderEnv.action_space.shape)
 
