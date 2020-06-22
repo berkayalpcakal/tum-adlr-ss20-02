@@ -7,7 +7,9 @@ from multi_goal.envs.toy_labyrinth_env import ToyLab
 
 
 def viz(agent: Agent, env: SettableGoalEnv):
-    run = lambda g: sum(1 for _ in trajectory(agent, env, goal=g, sleep_secs=0.1, render=True, print_every=1))
+    run = lambda g: sum(1 for _ in trajectory(
+        agent, env, goal=g, sleep_secs=0.05, render=True, print_every=1))
+
     while True:
         env.render()
         g = env.observation_space["desired_goal"].sample()

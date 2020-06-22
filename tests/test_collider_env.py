@@ -53,8 +53,8 @@ def test_restart_reset_steps(env_fn):
 def test_env_trajectory(env_fn):
     env = env_fn(max_episode_len=10)
     agent = null_agent(action_space=env.action_space)
-    assert len(list(trajectory(π=agent, env=env))) == 10
+    assert len(list(trajectory(pi=agent, env=env))) == 10
 
     goal = env.observation_space["desired_goal"].high
-    assert len(list(trajectory(π=agent, env=env, goal=goal))) == 10
+    assert len(list(trajectory(pi=agent, env=env, goal=goal))) == 10
 

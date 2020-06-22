@@ -132,14 +132,14 @@ def update_replay(goals: Tensor, goals_old: Tensor):
     return goals_old
 
 
-def trajectory(π: Agent, env: SettableGoalEnv, goal: np.ndarray = None,
+def trajectory(pi: Agent, env: SettableGoalEnv, goal: np.ndarray = None,
                sleep_secs: float = 0, render=False, print_every: int = None):
     if goal is not None:
         env.set_possible_goals(np.array(goal)[np.newaxis])
     obs = env.reset()
 
     for t in count():
-        action = π(obs)
+        action = pi(obs)
         next_obs, reward, done, info = env.step(action)
 
         if sleep_secs > 0:
@@ -152,12 +152,14 @@ def trajectory(π: Agent, env: SettableGoalEnv, goal: np.ndarray = None,
                   f" desired goal: {obs.desired_goal.T},"
                   f" distance: {distance(obs.achieved_goal, obs.desired_goal)},")
         if print_every is not None and info.get("is_success"):
-            print("SUCCESS!")
+            print(f"SUCCESS! Episode len: {t}")
 
         yield obs, action, reward, next_obs, done, info
 
         obs = next_obs
         if done:
+            if print_every is not None and info.get("is_success") == 0:
+                print(f"FAILURE! Episode len: {t}")
             break
 
 

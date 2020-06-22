@@ -73,9 +73,12 @@ class ARCAgent(Agent):
     _fpath = os.path.realpath(os.path.join(os.getcwd(), os.path.dirname(__file__)))
     _arc_fpath = os.path.join(_fpath, "arc.pt")
 
-    def __init__(self):
-        self._phi = ActionableRep(input_size=2)
-        self._phi.load_state_dict(torch.load(self._arc_fpath))
+    def __init__(self, phi: ActionableRep = None):
+        if phi is None:
+            self._phi = ActionableRep(input_size=2)
+            self._phi.load_state_dict(torch.load(self._arc_fpath))
+        else:
+            self._phi = phi
         self._x = torch.zeros(2, requires_grad=True)
         self._opt = self._make_opt()
 
@@ -90,12 +93,16 @@ class ARCAgent(Agent):
         loss = torch.dist(self._phi(goal), self._phi(self._x))
         loss.backward()
         self._opt.step()
-        return torch.clamp((self._x - cur_x), min=-1, max=1).detach().numpy()
+        direction = self._x - cur_x
+        norming = max(1, torch.norm(direction))
+        return (direction/norming).detach().numpy()
 
     def train(self, timesteps: int) -> None:
         raise NotImplementedError("The ARC agent is already trained.")
 
     def reset_momentum(self):
+        if self._x.grad is not None:
+            self._x.grad.zero_()
         self._opt = self._make_opt()
 
 
