@@ -24,7 +24,7 @@ def take(n: int, it: Iterable):
 
 
 wall = np.array([[x1, 0] for x1 in np.linspace(-1, 0.5, 30)])
-starting_pos = ToyLab.starting_obs
+starting_pos = ToyLab.starting_agent_pos
 
 
 def init_viz():

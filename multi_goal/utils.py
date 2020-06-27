@@ -60,7 +60,7 @@ def display_goals(goals: np.ndarray, returns, idx, env: SettableGoalEnv, fileNam
     colors = {"red": low_reward_goals,
               "green": high_reward_goals,
               "blue": goid_reward_goals,
-              "orange": env.starting_obs}
+              "orange": env.starting_agent_pos}
     fig, ax = env.render(other_positions=colors,
                          show_cur_agent_and_goal_pos=False)
 

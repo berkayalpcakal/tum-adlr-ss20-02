@@ -40,7 +40,7 @@ env       = ToyLab()
 eval_env  = ToyLab()  # Must be a different instance.
 π         = PPOAgent(env=env, experiment_name="goalgan-ppo")
 goalGAN   = initialize_GAN(env=env)
-goals_old = torch.Tensor([env.starting_obs]) + torch.randn(num_samples_from_old_goals, dim_goal(env))*0.1
+goals_old = torch.Tensor([env.starting_agent_pos]) + torch.randn(num_samples_from_old_goals, dim_goal(env)) * 0.1
 
 ### print model summary
 goalGAN.Generator=goalGAN.Generator.float(); goalGAN.Discriminator=goalGAN.Discriminator.float()

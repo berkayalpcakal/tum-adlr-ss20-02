@@ -35,7 +35,7 @@ class Observation(OrderedDict):
 
 class SettableGoalEnv(ABC, gym.GoalEnv):
     max_episode_len: int
-    starting_obs: np.ndarray
+    starting_agent_pos: np.ndarray
 
     def set_possible_goals(self, goals: Optional[np.ndarray], entire_space=False) -> None:
         raise NotImplementedError
@@ -55,7 +55,7 @@ class ColliderEnv(SettableGoalEnv):
     _green_ball_initial_pos = [2, 0, _ball_radius]
     _red_ball_initial_pos = [0, 0, _ball_radius]
     _viz_lock_taken = False
-    starting_obs = np.array(_red_ball_initial_pos[:2])
+    starting_agent_pos = np.array(_red_ball_initial_pos[:2])
 
     def __init__(self, visualize: bool = False, max_episode_len: int = 200, seed=0):
         super().__init__()

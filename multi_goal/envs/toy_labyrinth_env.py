@@ -38,7 +38,7 @@ class ToyLab(SettableGoalEnv):
         })
         self.action_space = gym.spaces.Box(low=-1, high=1, shape=(self._action_space_dim,))
         self.seed(seed)
-        self.starting_obs = _normalize(_initial_pos)  # normalized because public
+        self.starting_agent_pos = _normalize(_initial_pos)  # normalized because public
         self.max_episode_len = max_episode_len
         self._possible_normalized_goals = None
         self._use_random_starting_pos = use_random_starting_pos
@@ -140,6 +140,27 @@ class ToyLab(SettableGoalEnv):
 
 
 _normalize, _denormalize = normalizer(_labyrinth_lower_bound, _labyrinth_upper_bound)
+
+class Simulator:
+    def step(self, action: np.ndarray) -> np.ndarray:
+        raise NotImplementedError
+
+    def set_goal_pos(self, pos: np.ndarray):
+        raise NotImplementedError
+
+    def set_agent_pos(self, pos: np.ndarray):
+        raise NotImplementedError
+
+class ToyLabSimulator(Simulator):
+    def __init__(self):
+        self.agent_pos = None
+        self.goal_pos = None
+
+    def step(self, action: np.ndarray) -> np.ndarray:
+        return simulation_step(self.agent_pos, action)
+
+    def set_goal_pos(self, pos: np.ndarray):
+        pass
 
 
 _step_len = 0.5

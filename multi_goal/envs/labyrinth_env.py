@@ -15,7 +15,7 @@ _norm, _denorm = normalizer(_env_lower_bound, _env_upper_bound)
 class Labyrinth(ColliderEnv):
     _labyrinth_fname = os.path.join(ColliderEnv.__filelocation__, "assets/labyrinth.urdf")
     _labyrinth_position = [7.5, -5/2, 1.5/2]
-    starting_obs = _norm(ColliderEnv.starting_obs)
+    starting_agent_pos = _norm(ColliderEnv.starting_agent_pos)
 
     def __init__(self, visualize: bool = False, max_episode_len: int = 200, seed=0):
         super().__init__(visualize=visualize, max_episode_len=max_episode_len, seed=seed)

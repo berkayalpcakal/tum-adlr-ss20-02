@@ -75,7 +75,7 @@ def test_get_goal_successes(use_random_starting_pos: bool):
     env = ToyLab(use_random_starting_pos=use_random_starting_pos)
     assert all(len(successes) == 0 for successes in env.get_successes_of_goals().values())
     difficult_goal = env.observation_space["desired_goal"].high
-    my_goals = np.array([env.starting_obs, difficult_goal])
+    my_goals = np.array([env.starting_agent_pos, difficult_goal])
     env.set_possible_goals(my_goals)
 
     null_action = np.zeros(shape=env.action_space.shape)
@@ -87,17 +87,17 @@ def test_get_goal_successes(use_random_starting_pos: bool):
     successes = env.get_successes_of_goals()
 
     if not use_random_starting_pos:
-        assert successes[tuple(env.starting_obs)][0]
+        assert successes[tuple(env.starting_agent_pos)][0]
     assert len(successes[tuple(difficult_goal)]) == 0
 
 
 @pytest.mark.parametrize("env_fn", env_fns)
 def test_moving_one_step_away_from_goal_still_success(env_fn):
     env = env_fn()
-    env.set_possible_goals(env.starting_obs[np.newaxis])
+    env.set_possible_goals(env.starting_agent_pos[np.newaxis])
     env.reset()
     obs, r, done, info = env.step(env.action_space.high)
-    assert np.allclose(obs.desired_goal, env.starting_obs)
+    assert np.allclose(obs.desired_goal, env.starting_agent_pos)
     assert info["is_success"] == 1
     assert env.compute_reward(obs.achieved_goal, obs.desired_goal, None) == env.reward_range[1]
 
@@ -181,12 +181,13 @@ def test_env_trajectory(env_fn):
     goal = env.observation_space["desired_goal"].high
     assert len(list(trajectory(pi=agent, env=env, goal=goal))) == 10
 
+
 @pytest.mark.parametrize("env_fn", env_fns)
 def test_random_goals_cover_space(env_fn):
     env = env_fn()
     null_step = np.zeros(shape=env.action_space.shape)
-    instantiation_goals = np.array([env_fn(seed=i).step(null_step)[0].desired_goal for i in range(20)])
-    assert cover_space(instantiation_goals, tolerance=0.1)
+    instantiation_goals = np.array([env_fn(seed=i).step(null_step)[0].desired_goal for i in range(100)])
+    assert cover_space(instantiation_goals)
 
     reset_goals = np.array([env.reset().desired_goal for _ in range(100)])
     assert cover_space(reset_goals)
