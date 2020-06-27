@@ -3,13 +3,13 @@ from itertools import combinations
 import gym
 import pytest
 
+from multi_goal.GenerativeGoalLearning import trajectory, null_agent
 from multi_goal.envs.collider_env import Observation
-from multi_goal.envs.toy_labyrinth_env import _initial_pos, _normalize, \
-    _labyrinth_upper_bound, _labyrinth_lower_bound, _are_on_same_side_of_wall, ToyLab, \
-    _denormalize
+from multi_goal.envs.labyrinth_env import Labyrinth
+from multi_goal.envs.toy_labyrinth_env import _are_on_same_side_of_wall, ToyLab, normalizer
 import numpy as np
 
-from tests.test_collider_env import env_fns
+env_fns = [Labyrinth, ToyLab]
 
 
 @pytest.mark.parametrize("env_fn", env_fns)
@@ -20,16 +20,29 @@ def test_compute_reward(env_fn):
         assert env.compute_reward(g, g, None) == max(env.reward_range)
 
 
-def test_normalization():
-    assert _initial_pos.shape == _normalize(_initial_pos).shape
-    assert np.allclose(-np.ones(2), _normalize(_labyrinth_lower_bound))
-    assert np.allclose(np.ones(2), _normalize(_labyrinth_upper_bound))
-    middle = (_labyrinth_lower_bound + _labyrinth_upper_bound)/2
-    assert np.allclose(np.zeros(2), _normalize(middle))
+@pytest.mark.parametrize("env_fn", env_fns)
+def test_env_normalization(env_fn):
+    env = env_fn()
+    space = env.observation_space["desired_goal"]
+    assert env.reward_range == (-1, 0)
+    assert np.allclose(np.ones(space.shape), space.high)
+    assert np.allclose(-np.ones(space.shape), space.low)
 
+    env.reset()
+    low = env.observation_space["achieved_goal"].low
+    high = env.observation_space["achieved_goal"].high
+    for _ in range(100):
+        obs: Observation = env.step(env.action_space.high)[0]
+        assert all(low <= obs.achieved_goal) and all(obs.achieved_goal <= high)
+
+
+def test_normalizer():
+    rand = np.random.randn(2, 10)
+    low, high = rand.max(axis=1), rand.min(axis=1)
+    norm, denorm = normalizer(low, high)
     for _ in range(10):
-        pos = ToyLab.observation_space["desired_goal"].sample()
-        assert np.allclose(_normalize(_denormalize(pos)), pos)
+        goal = np.random.uniform(low, high)
+        assert np.allclose(norm(denorm(goal)), goal)
 
 
 def test_are_on_same_side_of_wall():
@@ -49,7 +62,8 @@ def test_setting_goals_at_runtime(env_fn):
 
     env.set_possible_goals(np.array(my_goals))
     for _ in range(3):
-        assert tuple(env.reset().desired_goal) in my_goals
+        obs = env.reset()
+        assert any(np.allclose(obs.desired_goal, g) for g in my_goals), f"{obs.desired_goal} not in {my_goals}"
 
     env.set_possible_goals(None, entire_space=True)
     for _ in range(3):
@@ -83,18 +97,18 @@ def test_moving_one_step_away_from_goal_still_success(env_fn):
     env.set_possible_goals(env.starting_obs[np.newaxis])
     env.reset()
     obs, r, done, info = env.step(env.action_space.high)
+    assert np.allclose(obs.desired_goal, env.starting_obs)
     assert info["is_success"] == 1
     assert env.compute_reward(obs.achieved_goal, obs.desired_goal, None) == env.reward_range[1]
 
 
 @pytest.mark.parametrize("env_fn", env_fns)
 def test_seed_determines_trajectories(env_fn):
-    assert env_fn(seed=0).reset() == env_fn(seed=0).reset()
-    assert env_fn(seed=0).reset() != env_fn(seed=1).reset()
+    null = np.zeros(shape=env_fn().action_space.shape)
+    assert env_fn(seed=0).step(null)[0] == env_fn(seed=0).step(null)[0]
+    assert env_fn(seed=0).step(null)[0] != env_fn(seed=1).step(null)[0]
 
     env = env_fn(seed=0)
-    env.reset()
-
     mk_actions = lambda: [env.action_space.sample() for _ in range(10)]
     mk_obs = lambda: [env.reset() for _ in range(10)]
 
@@ -119,7 +133,50 @@ def test_with_random_starting_states():
     for obs in starting_obss:
         assert not np.allclose(obs.achieved_goal, obs.desired_goal)
 
+
 @pytest.mark.parametrize("env_name", ["ToyLab-v0", "Labyrinth-v0"])
 def test_gym_registration_succeded(env_name):
     assert gym.make(env_name) is not None, "The gym could not be loaded with gym.make." \
                                            "Check the env registration string."
+
+
+@pytest.mark.parametrize("env_fn", env_fns)
+def test_multiple_envs_can_be_instantiated(env_fn):
+    envs = [env_fn() for _ in range(3)]
+    assert envs is not None
+
+
+def done(env_res):
+    return env_res[2]
+
+
+@pytest.mark.parametrize("env_fn", env_fns)
+def test_max_episode_len(env_fn):
+    env = env_fn(max_episode_len=7)
+    null_action = np.zeros(shape=env.action_space.shape)
+    dones = [done(env.step(null_action)) for _ in range(6)]
+    assert not dones[-1]
+    assert done(env.step(null_action))
+
+
+@pytest.mark.parametrize("env_fn", env_fns)
+def test_restart_reset_steps(env_fn):
+    env = env_fn(max_episode_len=5)
+    null_action = np.zeros(shape=env.action_space.shape)
+    env.seed(0)
+    while not done(env.step(null_action)):
+        pass
+
+    env.reset()
+    env.set_possible_goals(np.array([[1, 1]]))
+    assert not done(env.step(null_action))
+
+
+@pytest.mark.parametrize("env_fn", env_fns)
+def test_env_trajectory(env_fn):
+    env = env_fn(max_episode_len=10)
+    agent = null_agent(action_space=env.action_space)
+    assert len(list(trajectory(pi=agent, env=env))) == 10
+
+    goal = env.observation_space["desired_goal"].high
+    assert len(list(trajectory(pi=agent, env=env, goal=goal))) == 10

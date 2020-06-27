@@ -1,12 +1,12 @@
 import time
 from itertools import cycle
-from typing import Sequence, List, Mapping, Optional
+from typing import List, Mapping, Optional
 import gym
 import numpy as np
-from sklearn.preprocessing import MinMaxScaler
 from typeguard import typechecked
 
-from multi_goal.envs.collider_env import Observation, SettableGoalEnv, Goal, GoalHashable
+from multi_goal.envs import normalizer
+from multi_goal.envs.collider_env import Observation, SettableGoalEnv, GoalHashable
 from multi_goal.utils import get_updateable_scatter
 
 middle_wall_len = 12
@@ -25,47 +25,25 @@ _initial_pos = np.array([-middle_wall_len+2, -2])
 _labyrinth_lower_bound = np.array([-middle_wall_len, -sidewall_height / 2])
 _labyrinth_upper_bound = np.array([sidewall_height / 2, sidewall_height / 2])
 
-scaler = MinMaxScaler(feature_range=(-1, 1))
-scaler.fit([_labyrinth_lower_bound, _labyrinth_upper_bound])
-
-
-def _normalize(goal: Sequence[float]) -> np.ndarray:
-    return scaler.transform(goal[np.newaxis])[0]
-
-def _denormalize(norm_goals: Sequence[Sequence[float]]) -> np.ndarray:
-    if not isinstance(norm_goals, np.ndarray):
-        norm_goals = np.array(list(norm_goals))
-
-    is_single_goal = norm_goals.size == 2
-    if is_single_goal:
-        norm_goals = norm_goals.reshape((1, 2))
-
-    res = scaler.inverse_transform(norm_goals)
-    if is_single_goal:
-        res = res[0]
-
-    return res
-
 
 class ToyLab(SettableGoalEnv):
-
-    observation_space = gym.spaces.Dict(spaces={
-        "observation": gym.spaces.Box(low=0, high=0, shape=(0,)),
-        "achieved_goal": gym.spaces.Box(low=-1, high=1, shape=(2,)),
-        "desired_goal": gym.spaces.Box(low=-1, high=1, shape=(2,))
-    })
-    action_space = gym.spaces.Box(low=-1, high=1, shape=(2,))
     reward_range = (-1, 0)
-    starting_obs = _normalize(_initial_pos)  # normalized because public
-
+    _action_space_dim = 2
     def __init__(self, max_episode_len: int = 80, seed=0, use_random_starting_pos=False):
         super().__init__()
+        self.observation_space = gym.spaces.Dict(spaces={
+            "observation": gym.spaces.Box(low=0, high=0, shape=(0,)),
+            "achieved_goal": gym.spaces.Box(low=-1, high=1, shape=(2,)),
+            "desired_goal": gym.spaces.Box(low=-1, high=1, shape=(2,))
+        })
+        self.action_space = gym.spaces.Box(low=-1, high=1, shape=(self._action_space_dim,))
+        self.seed(seed)
+        self.starting_obs = _normalize(_initial_pos)  # normalized because public
         self.max_episode_len = max_episode_len
         self._possible_normalized_goals = None
         self._use_random_starting_pos = use_random_starting_pos
         self._cur_pos = self._new_initial_pos()
         self._normalized_goal = self._sample_new_normalized_goal()
-        self.seed(seed)
         self._successes_per_goal: Mapping[GoalHashable, List[bool]] = dict()
         self._plot = None
         self._labyrinth_corners = labyrinth_corners
@@ -76,7 +54,7 @@ class ToyLab(SettableGoalEnv):
             return _initial_pos
         return _denormalize(self.observation_space["desired_goal"].sample())
 
-    def _sample_new_normalized_goal(self) -> Goal:
+    def _sample_new_normalized_goal(self) -> np.ndarray:
         if self._possible_normalized_goals is None:
             return self.observation_space["desired_goal"].sample()
         return next(self._possible_normalized_goals)
@@ -161,6 +139,9 @@ class ToyLab(SettableGoalEnv):
         return fig, ax
 
 
+_normalize, _denormalize = normalizer(_labyrinth_lower_bound, _labyrinth_upper_bound)
+
+
 _step_len = 0.5
 def simulation_step(cur_pos: np.ndarray, action: np.ndarray) -> np.ndarray:
     assert cur_pos.shape == action.shape
@@ -188,7 +169,7 @@ def _is_above_wall(pos: np.ndarray) -> bool:
     return pos[1] > 0
 
 
-_max_single_action_dist = np.linalg.norm(ToyLab.action_space.high) * _step_len
+_max_single_action_dist = np.linalg.norm(np.ones(ToyLab._action_space_dim)) * _step_len
 def _are_close(x1: np.ndarray, x2: np.ndarray) -> bool:
     return np.linalg.norm(x1 - x2)**2 < _max_single_action_dist
 
