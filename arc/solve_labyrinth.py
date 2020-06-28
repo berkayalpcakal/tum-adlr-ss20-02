@@ -3,6 +3,7 @@ import click
 from multi_goal.GenerativeGoalLearning import trajectory, Agent, evaluate
 from multi_goal.agents import PPOAgent, HERSACAgent
 from multi_goal.envs import ISettableGoalEnv
+from multi_goal.envs.pybullet_labyrinth_env import Labyrinth
 from multi_goal.envs.toy_labyrinth_env import ToyLab
 
 
@@ -27,33 +28,43 @@ class Mode:
     EVAL  = "eval"
 
 
+class Envs:
+    TOY = "toy"
+    BULLET = "bullet"
+
+
 @click.command()
 @click.option("--mode", type=click.Choice([Mode.TRAIN, Mode.VIZ, Mode.EVAL]))
 @click.option("--alg", type=click.Choice(['her-sac', 'ppo']), default="her-sac", help="Algorithm: 'her' (HER+SAC) or 'ppo' available.")
+@click.option("--env", type=click.Choice(["toy", "bullet"]), default="toy", help="Simple Labyrinth env or Bullet one")
 @click.option("--num_steps", default=100000, show_default=True)
 @click.option("--random_starts", is_flag=True, default=False, show_default=True)
 def cmd_main(*args, **kwargs):
     main(*args, **kwargs)
 
 
-def main(mode: str, alg: str, num_steps: int, random_starts: bool):
-    env = ToyLab(use_random_starting_pos=random_starts)
-    fixed_start_obs_env = ToyLab(use_random_starting_pos=False)
+def main(mode: str, alg: str, num_steps: int, random_starts: bool, env: str):
+    env_fn = ToyLab if env == Envs.TOY else Labyrinth
+    params = dict(use_random_starting_pos=random_starts)
+    if env == Envs.BULLET:
+        params["visualize"] = mode == Mode.VIZ
+    e = env_fn(**params)
+    fixed_start_env = env_fn(use_random_starting_pos=False)
 
     if alg == Algs.HERSAC:
-        agent = HERSACAgent(env=env)
+        agent = HERSACAgent(env=e)
     elif alg == Algs.PPO:
-        agent = PPOAgent(env=env, verbose=1)
+        agent = PPOAgent(env=e, verbose=1)
     else:
         raise NotImplementedError
 
     if mode == Mode.TRAIN:
-        return agent.train(timesteps=num_steps, eval_env=fixed_start_obs_env)
+        return agent.train(timesteps=num_steps, eval_env=fixed_start_env)
     elif mode == Mode.VIZ:
-        return viz(agent=agent, env=env)
+        return viz(agent=agent, env=e)
     elif mode == Mode.EVAL:
         while True:
-            evaluate(agent=agent, env=fixed_start_obs_env, very_granular=True)
+            evaluate(agent=agent, env=fixed_start_env, very_granular=True)
             input("Press any key to re-compute.")
     else:
         raise NotImplementedError
