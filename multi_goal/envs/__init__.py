@@ -1,10 +1,12 @@
 from abc import ABC
 from collections import OrderedDict
+from itertools import cycle
 from typing import Tuple, Optional, Mapping, List, Sequence
 
 import gym
 import numpy as np
 from sklearn.preprocessing import MinMaxScaler
+from typeguard import typechecked
 
 GoalHashable = Tuple[float]
 
@@ -25,7 +27,7 @@ class Observation(OrderedDict):
         return not self.__eq__(other)
 
 
-class SettableGoalEnv(ABC, gym.GoalEnv):
+class ISettableGoalEnv(ABC, gym.GoalEnv):
     max_episode_len: int
     starting_obs: np.ndarray
 
@@ -58,3 +60,121 @@ def normalizer(low, high):
         return res
 
     return normalize, denormalize
+
+
+class Simulator:
+    normed_starting_agent_obs: np.ndarray
+
+    def step(self, action: np.ndarray) -> np.ndarray:
+        raise NotImplementedError
+
+    def set_agent_pos(self, pos: np.ndarray) -> None:
+        raise NotImplementedError
+
+    def set_goal_pos(self, pos: np.ndarray) -> None:
+        raise NotImplementedError
+
+    def is_success(self, achieved: np.ndarray, desired: np.ndarray) -> bool:
+        raise NotImplementedError
+
+    def render(self, *args, **kwargs):
+        raise NotImplementedError
+
+
+class SettableGoalEnv(ISettableGoalEnv):
+    reward_range = (-1, 0)
+    _action_space_dim = 2
+
+    def __init__(self, sim: Simulator, max_episode_len: int, seed=0, use_random_starting_pos=False):
+        super().__init__()
+        self.observation_space = gym.spaces.Dict(spaces={
+            "observation": gym.spaces.Box(low=0, high=0, shape=(0,)),
+            "achieved_goal": gym.spaces.Box(low=-1, high=1, shape=(2,)),
+            "desired_goal": gym.spaces.Box(low=-1, high=1, shape=(2,))
+        })
+        self.action_space = gym.spaces.Box(low=-1, high=1, shape=(self._action_space_dim,))
+        self.seed(seed)
+        self.starting_agent_pos = sim.normed_starting_agent_obs
+        self.max_episode_len = max_episode_len
+        self._sim = sim
+        self._possible_goals = None
+        self._successes_per_goal: Mapping[GoalHashable, List[bool]] = dict()
+        self._use_random_starting_pos = use_random_starting_pos
+        self._agent_pos = None
+        self._goal_pos = None
+        self._step_num = 0
+        self.reset()
+
+    def _new_initial_pos(self) -> np.ndarray:
+        if not self._use_random_starting_pos:
+            return self.starting_agent_pos
+        return self.observation_space["desired_goal"].sample()
+
+    def _new_goal(self) -> np.ndarray:
+        if self._possible_goals is None:
+            return self.observation_space["desired_goal"].sample()
+        return next(self._possible_goals)
+
+    def step(self, action: np.ndarray):
+        action = np.array(action)
+        assert self.action_space.contains(action*0.99), f"Action is not within 1% bounds: {action}"
+        self._step_num += 1
+        self._agent_pos = self._sim.step(action=action)
+        obs = self._make_obs()
+        reward = self.compute_reward(obs.achieved_goal, obs.desired_goal, {})
+        is_success = reward == max(self.reward_range)
+        done = (is_success or self._step_num % self.max_episode_len == 0)
+        if done and len(self._successes_per_goal) > 0:
+            self._successes_per_goal[tuple(self._goal_pos)].append(is_success)
+        return obs, reward, done, {"is_success": float(is_success)}
+
+    def compute_reward(self, achieved_goal: np.ndarray, desired_goal: np.ndarray, info):
+        """
+        This function can take inputs from outside, so the inputs are the normalized
+        versions of the goals (to [-1, 1]).
+        """
+        is_success = self._sim.is_success(achieved=achieved_goal, desired=desired_goal)
+        return max(self.reward_range) if is_success else min(self.reward_range)
+
+    def reset(self) -> Observation:
+        super().reset()
+        self._step_num = 0
+
+        self._agent_pos = self._new_initial_pos()
+        self._sim.set_agent_pos(self._agent_pos)
+
+        self._goal_pos = self._new_goal()
+        self._sim.set_goal_pos(self._goal_pos)
+
+        return self._make_obs()
+
+    def _make_obs(self) -> Observation:
+        return Observation(observation=np.empty(0),
+                           achieved_goal=self._agent_pos,
+                           desired_goal=self._goal_pos)
+
+    @typechecked
+    def set_possible_goals(self, goals: Optional[np.ndarray], entire_space=False) -> None:
+        if goals is None and entire_space:
+            self._possible_goals = None
+            self._successes_per_goal = dict()
+            return
+
+        assert len(goals.shape) == 2, f"Goals must have shape (N, 2), instead: {goals.shape}"
+        assert goals.shape[1] == self.observation_space["desired_goal"].shape[0]
+        self._possible_goals = cycle(np.random.permutation(goals))
+        self._successes_per_goal = {tuple(g): [] for g in goals}
+
+    def get_successes_of_goals(self) -> Mapping[GoalHashable, List[bool]]:
+        return dict(self._successes_per_goal)
+
+    def seed(self, seed=None):
+        self.action_space.seed(seed)
+        self.observation_space.seed(seed)
+
+    def render(self, other_positions: Mapping[str, np.ndarray] = None, show_agent_and_goal_pos=True):
+        return self._sim.render(other_positions=other_positions, show_agent_and_goal_pos=show_agent_and_goal_pos)
+
+
+def dim_goal(env: gym.GoalEnv):
+    return env.observation_space["desired_goal"].shape[0]

@@ -13,11 +13,11 @@ with warnings.catch_warnings():
     warnings.simplefilter(action="ignore", category=FutureWarning)
     from stable_baselines import PPO2, HER, SAC
 from multi_goal.GenerativeGoalLearning import Agent, evaluate
-from multi_goal.envs.collider_env import Observation, SettableGoalEnv
+from multi_goal.envs import Observation, ISettableGoalEnv
 
 
 class PPOAgent(Agent):
-    def __init__(self, env: SettableGoalEnv, verbose=0, experiment_name="ppo"):
+    def __init__(self, env: ISettableGoalEnv, verbose=0, experiment_name="ppo"):
         self._env = env
         self._dirs = Dirs(experiment_name=experiment_name + "-" + type(env).__name__)
         self._flat_env = HERGoalEnvWrapper(env)
@@ -33,7 +33,7 @@ class PPOAgent(Agent):
         action, _ = self._model.predict(flat_obs, deterministic=True)
         return action
 
-    def train(self, timesteps: int, num_checkpoints=4, eval_env: SettableGoalEnv = None):
+    def train(self, timesteps: int, num_checkpoints=4, eval_env: ISettableGoalEnv = None):
         ppo_offset = 128
         env = self._env if eval_env is None else eval_env
         cb = make_callback(timesteps=timesteps, num_checkpoints=num_checkpoints,
@@ -42,7 +42,7 @@ class PPOAgent(Agent):
 
 
 class HERSACAgent(Agent):
-    def __init__(self, env: SettableGoalEnv):
+    def __init__(self, env: ISettableGoalEnv):
         self._env = env
         self._dirs = Dirs(experiment_name="her-sac-" + type(env).__name__)
         options = {"env": env, "tensorboard_log": self._dirs.tensorboard, "model_class": SAC,
@@ -57,14 +57,14 @@ class HERSACAgent(Agent):
         action, _ = self._model.predict(obs, deterministic=True)
         return action
 
-    def train(self, timesteps: int, eval_env: SettableGoalEnv = None) -> None:
+    def train(self, timesteps: int, eval_env: ISettableGoalEnv = None) -> None:
         num_checkpoints = 4
         env = self._env if eval_env is None else eval_env
         cb = make_callback(timesteps, num_checkpoints, self._dirs, self, env)
         self._model.learn(total_timesteps=timesteps, callback=cb)
 
 
-def make_callback(timesteps: int, num_checkpoints: int, dirs: Dirs, agent: Agent, env: SettableGoalEnv):
+def make_callback(timesteps: int, num_checkpoints: int, dirs: Dirs, agent: Agent, env: ISettableGoalEnv):
     return CallbackList([
         CheckpointCallback(save_freq=timesteps//num_checkpoints, save_path=dirs.models, name_prefix=dirs.prefix),
         EvaluateCallback(agent=agent, env=env)
@@ -72,7 +72,7 @@ def make_callback(timesteps: int, num_checkpoints: int, dirs: Dirs, agent: Agent
 
 
 class EvaluateCallback(BaseCallback):
-    def __init__(self, agent: Agent, env: SettableGoalEnv):
+    def __init__(self, agent: Agent, env: ISettableGoalEnv):
         super().__init__()
         self._agent = agent
         self._settable_goal_env = env

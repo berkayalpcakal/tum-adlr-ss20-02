@@ -2,11 +2,11 @@ import click
 
 from multi_goal.GenerativeGoalLearning import trajectory, Agent, evaluate
 from multi_goal.agents import PPOAgent, HERSACAgent
-from multi_goal.envs.collider_env import SettableGoalEnv
+from multi_goal.envs import ISettableGoalEnv
 from multi_goal.envs.toy_labyrinth_env import ToyLab
 
 
-def viz(agent: Agent, env: SettableGoalEnv):
+def viz(agent: Agent, env: ISettableGoalEnv):
     run = lambda g: sum(1 for _ in trajectory(
         agent, env, goal=g, sleep_secs=0.05, render=True, print_every=1))
 

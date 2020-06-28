@@ -13,14 +13,14 @@ from torch.distributions.kl import kl_divergence as KL
 
 from multi_goal.GenerativeGoalLearning import Agent, trajectory
 from multi_goal.agents import HERSACAgent
-from multi_goal.envs.collider_env import Observation, SettableGoalEnv
+from multi_goal.envs import Observation, ISettableGoalEnv
 from multi_goal.envs.toy_labyrinth_env import ToyLab
 
 ObservationSeq = Sequence[Observation]
 GaussianPolicy = Callable[[ObservationSeq], List[Distribution]]
 
 
-def get_gaussian_pi(agent: HERSACAgent, env: SettableGoalEnv) -> GaussianPolicy:
+def get_gaussian_pi(agent: HERSACAgent, env: ISettableGoalEnv) -> GaussianPolicy:
     flattener = HERGoalEnvWrapper(env)
 
     def gaussian_pi(many_obs: ObservationSeq) -> List[Distribution]:

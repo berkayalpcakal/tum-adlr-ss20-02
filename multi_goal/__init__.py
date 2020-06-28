@@ -7,5 +7,5 @@ register(
 
 register(
     id="Labyrinth-v0",
-    entry_point="multi_goal.envs.labyrinth_env:Labyrinth"
+    entry_point="multi_goal.envs.pybullet_labyrinth_env:Labyrinth"
 )

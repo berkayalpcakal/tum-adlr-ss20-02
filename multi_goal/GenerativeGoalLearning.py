@@ -8,7 +8,7 @@ import numpy as np
 import torch
 from torch import Tensor
 
-from multi_goal.envs.collider_env import Observation, SettableGoalEnv, distance, dim_goal
+from multi_goal.envs import Observation, ISettableGoalEnv, dim_goal
 from multi_goal.LSGAN import LSGAN
 from multi_goal.utils import print_message
 
@@ -63,7 +63,7 @@ def initialize_GAN(env: gym.GoalEnv) -> LSGAN:
 
 
 @print_message("Training the policy on current goals")
-def update_and_eval_policy(goals: Goals, π: Agent, env: SettableGoalEnv, eval_env: SettableGoalEnv) -> Tuple[Agent, Returns]:
+def update_and_eval_policy(goals: Goals, π: Agent, env: ISettableGoalEnv, eval_env: ISettableGoalEnv) -> Tuple[Agent, Returns]:
     env.set_possible_goals(goals.numpy())
     env.reset()
     π.train(timesteps=env.max_episode_len*len(goals)*3, num_checkpoints=1, eval_env=eval_env)
@@ -75,7 +75,7 @@ def update_and_eval_policy(goals: Goals, π: Agent, env: SettableGoalEnv, eval_e
     return π, returns
 
 
-def eval_policy(goals: Goals, π: Agent, env: SettableGoalEnv):
+def eval_policy(goals: Goals, π: Agent, env: ISettableGoalEnv):
     for g in goals:
         for obs, action, reward, next_obs, done, info in trajectory(π, env, goal=g):
             if info.get("is_success"):
@@ -132,7 +132,7 @@ def update_replay(goals: Tensor, goals_old: Tensor):
     return goals_old
 
 
-def trajectory(pi: Agent, env: SettableGoalEnv, goal: np.ndarray = None,
+def trajectory(pi: Agent, env: ISettableGoalEnv, goal: np.ndarray = None,
                sleep_secs: float = 0, render=False, print_every: int = None):
     if goal is not None:
         env.set_possible_goals(np.array(goal)[np.newaxis])
@@ -149,8 +149,7 @@ def trajectory(pi: Agent, env: SettableGoalEnv, goal: np.ndarray = None,
 
         if print_every is not None and t % print_every == 0:
             print(f"achieved goal: {obs.achieved_goal.T},"
-                  f" desired goal: {obs.desired_goal.T},"
-                  f" distance: {distance(obs.achieved_goal, obs.desired_goal)},")
+                  f" desired goal: {obs.desired_goal.T}")
         if print_every is not None and info.get("is_success"):
             print(f"SUCCESS! Episode len: {t}")
 
@@ -164,7 +163,7 @@ def trajectory(pi: Agent, env: SettableGoalEnv, goal: np.ndarray = None,
 
 
 @print_message("Evaluating agent in env...")
-def evaluate(agent: Agent, env: SettableGoalEnv, very_granular=False):
+def evaluate(agent: Agent, env: ISettableGoalEnv, very_granular=False):
     coarseness = complex(0, 30 if very_granular else 10)
     goals = np.mgrid[-1:1:coarseness, -1:1:coarseness].reshape((2, -1)).T
     env.seed(0)
@@ -175,7 +174,7 @@ def evaluate(agent: Agent, env: SettableGoalEnv, very_granular=False):
     not_reached = np.array([goal for goal, successes in env.get_successes_of_goals().items() if not successes[0]])
     env.set_possible_goals(goals=None, entire_space=True)
     env.render(other_positions={"red": not_reached, "green": reached},
-               show_cur_agent_and_goal_pos=False)
+               show_agent_and_goal_pos=False)
 
 
 def consume(iterator):

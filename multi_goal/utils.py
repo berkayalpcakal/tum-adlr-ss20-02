@@ -7,7 +7,7 @@ import numpy as np
 from matplotlib.collections import PathCollection
 import matplotlib.pyplot as plt
 
-from multi_goal.envs.collider_env import SettableGoalEnv
+from multi_goal.envs import ISettableGoalEnv
 
 
 def print_message(msg: str):
@@ -47,7 +47,7 @@ def get_updateable_scatter():
     return fig, ax, scatter
 
 
-def display_goals(goals: np.ndarray, returns, idx, env: SettableGoalEnv, fileNamePrefix = 'goals'):
+def display_goals(goals: np.ndarray, returns, idx, env: ISettableGoalEnv, fileNamePrefix ='goals'):
     rewards = np.array(returns)
     low_reward_idx  = np.argwhere(0.1>rewards).reshape(-1,)
     high_reward_idx = np.argwhere(0.9<rewards).reshape(-1,)
@@ -62,7 +62,7 @@ def display_goals(goals: np.ndarray, returns, idx, env: SettableGoalEnv, fileNam
               "blue": goid_reward_goals,
               "orange": env.starting_agent_pos}
     fig, ax = env.render(other_positions=colors,
-                         show_cur_agent_and_goal_pos=False)
+                         show_agent_and_goal_pos=False)
 
     fig.savefig("./figs/{}_{}.png".format(fileNamePrefix, idx))
 

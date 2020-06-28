@@ -13,10 +13,11 @@ from multi_goal.GenerativeGoalLearning import trajectory
 from multi_goal.agents import HERSACAgent
 from arc.action_reps_control import get_gaussian_pi, ActionableRep, ObservationSeq, Dact, \
     GaussianPolicy
-from multi_goal.envs.toy_labyrinth_env import ToyLab
 
 from torch import nn
 from torch import Tensor
+
+from multi_goal.envs.toy_labyrinth_env import ToyLab
 
 
 def take(n: int, it: Iterable):
@@ -24,7 +25,7 @@ def take(n: int, it: Iterable):
 
 
 wall = np.array([[x1, 0] for x1 in np.linspace(-1, 0.5, 30)])
-starting_pos = ToyLab.starting_agent_pos
+starting_pos = np.array([-.75, -.5])
 
 
 def init_viz():
@@ -76,7 +77,7 @@ if __name__ == '__main__':
     bins = np.bincount(traj_lens)
     fig, ax = plt.subplots()
     ax.bar(range(len(bins)), bins)
-    env = ToyLab(max_episode_len=int(2*np.mean(traj_lens)), use_random_starting_pos=True)
+    env = ToyLab(max_episode_len=int(2 * np.mean(traj_lens)), use_random_starting_pos=True)
     traj_gen = ([step[3] for step in trajectory(agent, env)] for _ in count())
     phi = ActionableRep(input_size=env.observation_space["achieved_goal"].shape[0])
     fname = "arc.pt"

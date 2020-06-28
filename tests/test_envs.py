@@ -4,9 +4,9 @@ import gym
 import pytest
 
 from multi_goal.GenerativeGoalLearning import trajectory, null_agent
-from multi_goal.envs.collider_env import Observation
-from multi_goal.envs.labyrinth_env import Labyrinth
-from multi_goal.envs.toy_labyrinth_env import _are_on_same_side_of_wall, ToyLab, normalizer
+from multi_goal.envs import Observation
+from multi_goal.envs.pybullet_labyrinth_env import Labyrinth
+from multi_goal.envs.toy_labyrinth_env import normalizer, ToyLabSimulator, ToyLab
 import numpy as np
 
 env_fns = [Labyrinth, ToyLab]
@@ -48,9 +48,10 @@ def test_normalizer():
 def test_are_on_same_side_of_wall():
     below_wall = np.array([1, -1])
     above_wall = np.array([1, 1])
-    assert _are_on_same_side_of_wall(below_wall, below_wall)
-    assert _are_on_same_side_of_wall(above_wall, above_wall)
-    assert not _are_on_same_side_of_wall(below_wall, above_wall)
+    c = ToyLabSimulator
+    assert c._are_on_same_side_of_wall(below_wall, below_wall)
+    assert c._are_on_same_side_of_wall(above_wall, above_wall)
+    assert not c._are_on_same_side_of_wall(below_wall, above_wall)
 
 
 @pytest.mark.parametrize("env_fn", env_fns)

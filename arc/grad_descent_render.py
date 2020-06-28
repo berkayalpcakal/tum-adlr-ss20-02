@@ -4,9 +4,8 @@ from matplotlib.cm import viridis
 import torch
 
 from arc.action_reps_control import ActionableRep, ARCAgent
-from multi_goal.GenerativeGoalLearning import  trajectory
+from multi_goal.GenerativeGoalLearning import trajectory
 from multi_goal.envs.toy_labyrinth_env import ToyLab
-
 
 goal = np.array([-0.7, 0.7])
 phi = ActionableRep(2)
