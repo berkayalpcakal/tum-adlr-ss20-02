@@ -67,7 +67,7 @@ class HERSACAgent(Agent):
 def make_callback(timesteps: int, num_checkpoints: int, dirs: Dirs, agent: Agent, env: ISettableGoalEnv):
     return CallbackList([
         CheckpointCallback(save_freq=timesteps//num_checkpoints, save_path=dirs.models, name_prefix=dirs.prefix),
-        EvaluateCallback(agent=agent, env=env)
+        #EvaluateCallback(agent=agent, env=env)
     ])
 
 
