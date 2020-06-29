@@ -18,28 +18,51 @@ class Labyrinth(SettableGoalEnv):
         super().__init__(sim=simulator, max_episode_len=max_episode_len, *args, **kwargs)
 
 
+class HardLabyrinth(SettableGoalEnv):
+    def __init__(self, visualize=False, max_episode_len=100, *args, **kwargs):
+        simulator = PyBullet(visualize=visualize, labyrinth=HardLabyrinthConfig())
+        super().__init__(sim=simulator, max_episode_len=max_episode_len, *args, **kwargs)
+
+
+BALL_RADIUS = 0.3
+
+
+class SimpleLabyrinthConfig:
+    fname = "assets/labyrinth.urdf"
+    position = [7.5, -5/2, 1.5/2]
+    wall_thickness = 0.31
+    ball_radius = BALL_RADIUS
+    lower_bound = np.array([-5/2 + wall_thickness/2, -5/2 + wall_thickness/2]) + ball_radius -0.01
+    upper_bound = np.array([20 - 5/2 -wall_thickness/2, 10 - 5/2 - wall_thickness/2]) - ball_radius + 0.01
+    agent_initial_pos = np.array([0, 0, ball_radius])
+    goal_initial_pos = [2, 0, ball_radius]
+    arrow_initial_pos = [*agent_initial_pos[:2], 2*ball_radius]
+
+
+class HardLabyrinthConfig(SimpleLabyrinthConfig):
+    def __init__(self):
+        self.fname = "assets/hard-labyrinth.urdf"
+        wall_len = 12
+        self.position = [0, 0, 0]
+        margin = self.wall_thickness/2 + self.ball_radius - 0.01
+        self.lower_bound = np.array([-wall_len, -wall_len])/2 + margin
+        self.upper_bound = np.array([wall_len, wall_len])/2 - margin
+        self.agent_initial_pos = np.array([-wall_len*3/8, -wall_len/8, self.ball_radius])
+        self.goal_initial_pos = [-wall_len*3/8, wall_len/8, self.ball_radius]
+        self.arrow_initial_pos = [*self.agent_initial_pos[:2], 2*self.ball_radius]
+
+
 class PyBullet(Simulator):
     action_dim = 2
     goal_dim = 2
     obs_dim = 2
-    normed_starting_agent_obs = np.array([-.75, -.5])
     _viz_lock_taken = False
     __filelocation__ = os.path.realpath(os.path.join(os.getcwd(), os.path.dirname(__file__)))
     _red_ball_fname = os.path.join(__filelocation__, 'assets/little_ball.urdf')
     _green_ball_fname = os.path.join(__filelocation__, 'assets/immaterial_ball.urdf')
-    _labyrinth_fname = os.path.join(__filelocation__, "assets/labyrinth.urdf")
     _arrow_fname = os.path.join(__filelocation__, "assets/arrow.urdf")
-    _labyrinth_position = [7.5, -5/2, 1.5/2]
-    _wall_thickness = 0.31
-    _ball_radius = 0.3
-    _env_lower_bound = np.array([-5/2 + _wall_thickness/2, -5/2 + _wall_thickness/2]) + _ball_radius -0.01
-    _env_upper_bound = np.array([20 - 5/2 -_wall_thickness/2, 10 - 5/2 - _wall_thickness/2]) - _ball_radius + 0.01
-    _norm, _denorm = normalizer(_env_lower_bound, _env_upper_bound)
-    _norm, _denorm = staticmethod(_norm), staticmethod(_denorm)
-    _green_ball_initial_pos = [2, 0, _ball_radius]
-    _red_ball_initial_pos = [0, 0, _ball_radius]
 
-    def __init__(self, visualize=False):
+    def __init__(self, visualize=False, labyrinth=SimpleLabyrinthConfig()):
         self._visualize = visualize
         if visualize:
             assert not self._viz_lock_taken, "only one PyBullet simulation can be visualized simultaneously"
@@ -49,10 +72,15 @@ class PyBullet(Simulator):
         self._bullet.setAdditionalSearchPath(pybullet_data.getDataPath())  # used by loadURDF
         self._bullet.setGravity(0, 0, -9.81)
         self._bullet.loadURDF("plane.urdf")
-        self._agent_ball = self._bullet.loadURDF(self._red_ball_fname, self._red_ball_initial_pos)
-        self._goal_ball = self._bullet.loadURDF(self._green_ball_fname, [2, 0, self._ball_radius], useFixedBase=1)
-        self._bullet.loadURDF(self._labyrinth_fname, self._labyrinth_position, useFixedBase=1)
-        self._arrow = self._bullet.loadURDF(self._arrow_fname, [2, 0, 2*self._ball_radius], useFixedBase=1)
+        self._agent_ball = self._bullet.loadURDF(self._red_ball_fname, labyrinth.agent_initial_pos)
+        self._goal_ball = self._bullet.loadURDF(self._green_ball_fname, labyrinth.goal_initial_pos, useFixedBase=1)
+        labyrinth_fname = os.path.join(self.__filelocation__, labyrinth.fname)
+        self._bullet.loadURDF(labyrinth_fname, labyrinth.position, useFixedBase=1)
+        self._arrow = self._bullet.loadURDF(self._arrow_fname, labyrinth.arrow_initial_pos, useFixedBase=1)
+
+        self._ball_radius = labyrinth.ball_radius
+        self._norm, self._denorm = normalizer(labyrinth.lower_bound, labyrinth.upper_bound)
+        self.normed_starting_agent_obs = self._norm(labyrinth.agent_initial_pos[:2])
 
     def step(self, action: np.ndarray) -> SimObs:
         sim_step_per_sec = 240
@@ -102,7 +130,7 @@ def distance(x1: np.ndarray, x2: np.ndarray):
 
 
 def _goals_are_close(achieved_goal: np.ndarray, desired_goal: np.ndarray):
-    ε = PyBullet._ball_radius
+    ε = BALL_RADIUS
     return distance(achieved_goal, desired_goal) < ε
 
 

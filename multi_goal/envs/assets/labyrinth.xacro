@@ -26,36 +26,23 @@
     </link>
   </xacro:macro>
 
+  <xacro:macro name="make_joint" params="parent child xyz rpy">
+    <joint name="${parent}-${child}" type="fixed">
+      <parent link="${parent}"/>
+      <child link="${child}"/>
+      <origin xyz="${xyz}" rpy="${rpy}"/>
+    </joint>
+  </xacro:macro>
+
   <xacro:make_wall name="left_wall" length="20"/>
   <xacro:make_wall name="right_wall" length="20"/>
-
-  <joint name="wall_left_right" type="fixed">
-    <parent link="left_wall"/>
-    <child link="right_wall"/>
-    <origin xyz="0 10 0"/>
-  </joint>
-
   <xacro:make_wall name="north_wall" length="10" />
   <xacro:make_wall name="south_wall" length="10" />
-
-  <joint name="wall_left_north" type="fixed">
-    <parent link="left_wall"/>
-    <child link="north_wall"/>
-    <origin xyz="10 5 0" rpy="0 0 1.57079"/>
-  </joint>
-
-  <joint name="wall_left_south" type="fixed">
-    <parent link="left_wall"/>
-    <child link="south_wall"/>
-    <origin xyz="-10 5 0" rpy="0 0 1.57079"/>
-  </joint>
-
   <xacro:make_wall name="middle_wall" length="16" />
 
-  <joint name="wall_left_middle" type="fixed">
-    <parent link="left_wall"/>
-    <child link="middle_wall"/>
-    <origin xyz="-2 5 0"/>
-  </joint>
+  <xacro:make_joint parent="left_wall" child="north_wall" xyz="10 5 0" rpy="0 0 ${pi/2}" />
+  <xacro:make_joint parent="left_wall" child="south_wall" xyz="-10 5 0" rpy="0 0 ${pi/2}" />
+  <xacro:make_joint parent="left_wall" child="middle_wall" xyz="-2 5 0" rpy="0 0 0" />
+  <xacro:make_joint parent="left_wall" child="right_wall" xyz="0 10 0" rpy="0 0 0" />
 
 </robot>

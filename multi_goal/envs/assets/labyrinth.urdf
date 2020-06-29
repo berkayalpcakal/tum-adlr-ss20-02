@@ -43,11 +43,6 @@
       <inertia ixx="1" ixy="0" ixz="0" iyy="1" iyz="0" izz="1"/>
     </inertial>
   </link>
-  <joint name="wall_left_right" type="fixed">
-    <parent link="left_wall"/>
-    <child link="right_wall"/>
-    <origin xyz="0 10 0"/>
-  </joint>
   <link name="north_wall">
     <visual>
       <geometry>
@@ -84,16 +79,6 @@
       <inertia ixx="1" ixy="0" ixz="0" iyy="1" iyz="0" izz="1"/>
     </inertial>
   </link>
-  <joint name="wall_left_north" type="fixed">
-    <parent link="left_wall"/>
-    <child link="north_wall"/>
-    <origin rpy="0 0 1.57079" xyz="10 5 0"/>
-  </joint>
-  <joint name="wall_left_south" type="fixed">
-    <parent link="left_wall"/>
-    <child link="south_wall"/>
-    <origin rpy="0 0 1.57079" xyz="-10 5 0"/>
-  </joint>
   <link name="middle_wall">
     <visual>
       <geometry>
@@ -112,10 +97,25 @@
       <inertia ixx="1" ixy="0" ixz="0" iyy="1" iyz="0" izz="1"/>
     </inertial>
   </link>
-  <joint name="wall_left_middle" type="fixed">
+  <joint name="left_wall-north_wall" type="fixed">
+    <parent link="left_wall"/>
+    <child link="north_wall"/>
+    <origin rpy="0 0 1.57079632679" xyz="10 5 0"/>
+  </joint>
+  <joint name="left_wall-south_wall" type="fixed">
+    <parent link="left_wall"/>
+    <child link="south_wall"/>
+    <origin rpy="0 0 1.57079632679" xyz="-10 5 0"/>
+  </joint>
+  <joint name="left_wall-middle_wall" type="fixed">
     <parent link="left_wall"/>
     <child link="middle_wall"/>
-    <origin xyz="-2 5 0"/>
+    <origin rpy="0 0 0" xyz="-2 5 0"/>
+  </joint>
+  <joint name="left_wall-right_wall" type="fixed">
+    <parent link="left_wall"/>
+    <child link="right_wall"/>
+    <origin rpy="0 0 0" xyz="0 10 0"/>
   </joint>
 </robot>
 

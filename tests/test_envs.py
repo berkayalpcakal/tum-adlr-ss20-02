@@ -136,7 +136,7 @@ def test_with_random_starting_states(env_fn):
         assert not np.allclose(obs.achieved_goal, obs.desired_goal)
 
 
-@pytest.mark.parametrize("env_name", ["ToyLab-v0", "Labyrinth-v0"])
+@pytest.mark.parametrize("env_name", ["ToyLab-v0", "Labyrinth-v0", "HardLabyrinth-v0"])
 def test_gym_registration_succeded(env_name):
     assert gym.make(env_name) is not None, "The gym could not be loaded with gym.make." \
                                            "Check the env registration string."

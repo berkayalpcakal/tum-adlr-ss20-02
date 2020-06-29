@@ -71,7 +71,7 @@ class ActionableRep(nn.Module):
 
 class ARCAgent(Agent):
     _fpath = os.path.realpath(os.path.join(os.getcwd(), os.path.dirname(__file__)))
-    _arc_fpath = os.path.join(_fpath, "arc-bullet.pt")
+    _arc_fpath = os.path.join(_fpath, "pts/arc-bullet.pt")
 
     def __init__(self, env: ISettableGoalEnv, phi: ActionableRep = None, lr=0.8):
         if phi is None:
