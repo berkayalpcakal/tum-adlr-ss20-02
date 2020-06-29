@@ -14,7 +14,7 @@ from torch.distributions.kl import kl_divergence as KL
 from multi_goal.GenerativeGoalLearning import Agent, trajectory
 from multi_goal.agents import HERSACAgent
 from multi_goal.envs import Observation, ISettableGoalEnv
-from multi_goal.envs.toy_labyrinth_env import ToyLab
+from multi_goal.envs.pybullet_labyrinth_env import Labyrinth
 
 ObservationSeq = Sequence[Observation]
 GaussianPolicy = Callable[[ObservationSeq], List[Distribution]]
@@ -71,19 +71,20 @@ class ActionableRep(nn.Module):
 
 class ARCAgent(Agent):
     _fpath = os.path.realpath(os.path.join(os.getcwd(), os.path.dirname(__file__)))
-    _arc_fpath = os.path.join(_fpath, "arc.pt")
+    _arc_fpath = os.path.join(_fpath, "arc-bullet.pt")
 
-    def __init__(self, phi: ActionableRep = None):
+    def __init__(self, env: ISettableGoalEnv, phi: ActionableRep = None, lr=0.8):
         if phi is None:
-            self._phi = ActionableRep(input_size=2)
+            self._phi = ActionableRep(input_size=env.observation_space["desired_goal"].shape[0])
             self._phi.load_state_dict(torch.load(self._arc_fpath))
         else:
             self._phi = phi
         self._x = torch.zeros(2, requires_grad=True)
+        self._lr = lr
         self._opt = self._make_opt()
 
     def _make_opt(self):
-        return torch.optim.Adam([self._x], lr=0.8)
+        return torch.optim.Adam([self._x], lr=self._lr)
 
     def __call__(self, obs: Observation) -> np.ndarray:
         self._opt.zero_grad()
@@ -107,8 +108,8 @@ class ARCAgent(Agent):
 
 
 if __name__ == '__main__':
-    agent = ARCAgent()
-    env = ToyLab(max_episode_len=140)
+    env = Labyrinth(max_episode_len=200, visualize=True)
+    agent = ARCAgent(env=env)
     # evaluate(agent, env, very_granular=False)
     # input("exit")
 

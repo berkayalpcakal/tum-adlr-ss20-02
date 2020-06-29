@@ -36,8 +36,8 @@ def gradient_descent_rendering():
 
 
 fig, ax = gradient_descent_rendering()
-agent = ARCAgent(phi=phi)
 env = ToyLab(max_episode_len=60, use_random_starting_pos=True, seed=1)
+agent = ARCAgent(phi=phi, env=env)
 while True:
     agent.reset_momentum()
     t = trajectory(pi=agent, env=env, goal=goal, print_every=100)
