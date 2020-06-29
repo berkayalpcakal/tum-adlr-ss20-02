@@ -124,8 +124,9 @@ def test_seed_determines_trajectories(env_fn):
     assert trajectory == [env.step(a) for a in actions]
 
 
-def test_with_random_starting_states():
-    env = ToyLab(use_random_starting_pos=True)
+@pytest.mark.parametrize("env_fn", env_fns)
+def test_with_random_starting_states(env_fn):
+    env = env_fn(use_random_starting_pos=True)
     o1: Observation
     starting_obss = [env.reset() for _ in range(5)]
     for o1, o2 in combinations(starting_obss, 2):
