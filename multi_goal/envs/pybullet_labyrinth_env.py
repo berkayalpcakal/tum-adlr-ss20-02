@@ -9,7 +9,7 @@ import pybullet_data
 
 from pybullet_utils.bullet_client import BulletClient
 
-from multi_goal.envs import Simulator, SettableGoalEnv, normalizer
+from multi_goal.envs import Simulator, SettableGoalEnv, normalizer, SimObs
 
 
 class Labyrinth(SettableGoalEnv):
@@ -19,6 +19,9 @@ class Labyrinth(SettableGoalEnv):
 
 
 class PyBullet(Simulator):
+    action_dim = 2
+    goal_dim = 2
+    obs_dim = 2
     normed_starting_agent_obs = np.array([-.75, -.5])
     _viz_lock_taken = False
     __filelocation__ = os.path.realpath(os.path.join(os.getcwd(), os.path.dirname(__file__)))
@@ -50,22 +53,31 @@ class PyBullet(Simulator):
         self._bullet.loadURDF(self._labyrinth_fname, self._labyrinth_position, useFixedBase=1)
         self._arrow = self._bullet.loadURDF(self._arrow_fname, [2, 0, 2*self._ball_radius], useFixedBase=1)
 
-    def step(self, action: np.ndarray) -> np.ndarray:
+    def step(self, action: np.ndarray) -> SimObs:
         sim_step_per_sec = 240
         agent_actions_per_sec = 10
-        for _ in range(sim_step_per_sec // agent_actions_per_sec):
+        for _ in range((sim_step_per_sec // agent_actions_per_sec) - 1):
             if self._visualize:
                 self._update_force_arrow_viz(force=action)
                 time.sleep(1 / sim_step_per_sec)
             _apply_force(self._bullet, obj=self._agent_ball, force=action)
             self._bullet.stepSimulation()
-        return self._norm(_position(self._bullet.getBasePositionAndOrientation(self._agent_ball)))
+
+        prev_agent_pos = self._get_agent_pos()
+        _apply_force(self._bullet, obj=self._agent_ball, force=action)
+        self._bullet.stepSimulation()
+        agent_pos = self._get_agent_pos()
+        agent_vel = 30*(agent_pos - prev_agent_pos)  # goal is to output a max vel of ~1
+        return SimObs(agent_pos=self._norm(agent_pos), obs=agent_vel)
+
+    def _get_agent_pos(self) -> np.ndarray:
+        return _position(self._bullet.getBasePositionAndOrientation(self._agent_ball))
 
     def _update_force_arrow_viz(self, force: np.ndarray) -> None:
         xforce, yforce = force
         yaw = np.angle(complex(xforce, yforce))
         quaternion = self._bullet.getQuaternionFromEuler([0, 0, yaw])
-        agent_pos = _position(self._bullet.getBasePositionAndOrientation(self._agent_ball))
+        agent_pos = self._get_agent_pos()
         _reset_object(self._bullet, self._arrow, [*agent_pos, 2*self._ball_radius], quaternion=quaternion)
 
     def set_agent_pos(self, pos: np.ndarray) -> None:
@@ -117,4 +129,4 @@ if __name__ == '__main__':
     for t in count():
         action = obs.desired_goal - obs.achieved_goal
         obs = env.step(action / np.linalg.norm(action))[0]
-        print(f"step {t}")
+        print(f"step {t}, vel: f{obs.observation}")

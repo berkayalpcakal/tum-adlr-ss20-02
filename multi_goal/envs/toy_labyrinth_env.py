@@ -2,7 +2,7 @@ import time
 from typing import Mapping
 import numpy as np
 
-from multi_goal.envs import normalizer, SettableGoalEnv, Simulator
+from multi_goal.envs import normalizer, SettableGoalEnv, Simulator, SimObs
 from multi_goal.utils import get_updateable_scatter
 
 
@@ -12,6 +12,9 @@ class ToyLab(SettableGoalEnv):
 
 
 class ToyLabSimulator(Simulator):
+    action_dim = 2
+    goal_dim = 2
+    obs_dim = 0
     normed_starting_agent_obs = np.array([-.75, -.5])
     middle_wall_len = 12
     sidewall_height = 8
@@ -35,9 +38,9 @@ class ToyLabSimulator(Simulator):
         self.goal_pos = None
         self._plot = None
 
-    def step(self, action: np.ndarray) -> np.ndarray:
+    def step(self, action: np.ndarray) -> SimObs:
         self.agent_pos = self.simulation_step(self.agent_pos, action)
-        return self._normalize(self.agent_pos)
+        return SimObs(agent_pos=self._normalize(self.agent_pos), obs=np.empty(0))
 
     _step_len = 0.5
     def simulation_step(self, cur_pos: np.ndarray, action: np.ndarray) -> np.ndarray:
@@ -74,7 +77,7 @@ class ToyLabSimulator(Simulator):
     def _is_above_wall(pos: np.ndarray) -> bool:
         return pos[1] > 0
 
-    _max_single_action_dist = np.linalg.norm(np.ones(SettableGoalEnv._action_space_dim)) * _step_len
+    _max_single_action_dist = np.linalg.norm(np.ones(action_dim)) * _step_len
     def _are_close(self, x1: np.ndarray, x2: np.ndarray) -> bool:
         return np.linalg.norm(x1 - x2)**2 < self._max_single_action_dist
 

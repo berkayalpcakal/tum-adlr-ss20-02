@@ -197,3 +197,12 @@ def test_random_goals_cover_space(env_fn):
 def cover_space(samples: np.ndarray, tolerance=0.03) -> bool:
     return (np.allclose(samples.min(axis=0), -1, atol=tolerance) and
             np.allclose(samples.max(axis=0), 1, atol=tolerance))
+
+
+@pytest.mark.parametrize("env_fn,obs_size", [(Labyrinth, 2), (ToyLab, 0)])
+def test_obs_size_as_expected(env_fn, obs_size):
+    env = env_fn()
+    assert env.observation_space["observation"].shape[0] == obs_size
+    assert env.reset().observation.size == obs_size
+    null_action = np.zeros(shape=env.action_space.shape)
+    assert env.step(null_action)[0].observation.size == obs_size

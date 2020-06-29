@@ -1,7 +1,7 @@
 from abc import ABC
 from collections import OrderedDict
 from itertools import cycle
-from typing import Tuple, Optional, Mapping, List, Sequence
+from typing import Tuple, Optional, Mapping, List, Sequence, NamedTuple
 
 import gym
 import numpy as np
@@ -62,10 +62,16 @@ def normalizer(low, high):
     return normalize, denormalize
 
 
+SimObs = NamedTuple("State", fields=[("agent_pos", np.ndarray), ("obs", np.ndarray)])
+
+
 class Simulator:
+    action_dim: int
+    goal_dim: int
+    obs_dim: int
     normed_starting_agent_obs: np.ndarray
 
-    def step(self, action: np.ndarray) -> np.ndarray:
+    def step(self, action: np.ndarray) -> SimObs:
         raise NotImplementedError
 
     def set_agent_pos(self, pos: np.ndarray) -> None:
@@ -83,16 +89,15 @@ class Simulator:
 
 class SettableGoalEnv(ISettableGoalEnv):
     reward_range = (-1, 0)
-    _action_space_dim = 2
 
     def __init__(self, sim: Simulator, max_episode_len: int, seed=0, use_random_starting_pos=False):
         super().__init__()
         self.observation_space = gym.spaces.Dict(spaces={
-            "observation": gym.spaces.Box(low=0, high=0, shape=(0,)),
-            "achieved_goal": gym.spaces.Box(low=-1, high=1, shape=(2,)),
-            "desired_goal": gym.spaces.Box(low=-1, high=1, shape=(2,))
+            "observation": gym.spaces.Box(low=0, high=0, shape=(sim.obs_dim,)),
+            "achieved_goal": gym.spaces.Box(low=-1, high=1, shape=(sim.goal_dim,)),
+            "desired_goal": gym.spaces.Box(low=-1, high=1, shape=(sim.goal_dim,))
         })
-        self.action_space = gym.spaces.Box(low=-1, high=1, shape=(self._action_space_dim,))
+        self.action_space = gym.spaces.Box(low=-1, high=1, shape=(sim.action_dim,))
         self.seed(seed)
         self.starting_agent_pos = sim.normed_starting_agent_obs
         self.max_episode_len = max_episode_len
@@ -102,6 +107,7 @@ class SettableGoalEnv(ISettableGoalEnv):
         self._use_random_starting_pos = use_random_starting_pos
         self._agent_pos = None
         self._goal_pos = None
+        self._cur_obs = None
         self._step_num = 0
         self.reset()
 
@@ -119,8 +125,8 @@ class SettableGoalEnv(ISettableGoalEnv):
         action = np.array(action)
         assert self.action_space.contains(action*0.99), f"Action is not within 1% bounds: {action}"
         self._step_num += 1
-        self._agent_pos = self._sim.step(action=action)
-        obs = self._make_obs()
+        self._agent_pos, self._cur_obs = self._sim.step(action=action)
+        obs = self._make_obs_object()
         reward = self.compute_reward(obs.achieved_goal, obs.desired_goal, {})
         is_success = reward == max(self.reward_range)
         done = (is_success or self._step_num % self.max_episode_len == 0)
@@ -146,10 +152,12 @@ class SettableGoalEnv(ISettableGoalEnv):
         self._goal_pos = self._new_goal()
         self._sim.set_goal_pos(self._goal_pos)
 
-        return self._make_obs()
+        null_action = np.zeros(shape=self.action_space.shape)
+        self._agent_pos, self._cur_obs = self._sim.step(action=null_action)
+        return self._make_obs_object()
 
-    def _make_obs(self) -> Observation:
-        return Observation(observation=np.empty(0),
+    def _make_obs_object(self) -> Observation:
+        return Observation(observation=self._cur_obs,
                            achieved_goal=self._agent_pos,
                            desired_goal=self._goal_pos)
 
