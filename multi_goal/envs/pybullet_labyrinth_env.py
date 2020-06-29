@@ -30,9 +30,10 @@ class PyBullet(Simulator):
     _labyrinth_fname = os.path.join(__filelocation__, "assets/labyrinth.urdf")
     _arrow_fname = os.path.join(__filelocation__, "assets/arrow.urdf")
     _labyrinth_position = [7.5, -5/2, 1.5/2]
+    _wall_thickness = 0.31
     _ball_radius = 0.3
-    _env_lower_bound = np.array([-2.25, -2.25]) + _ball_radius -0.01
-    _env_upper_bound = np.array([17.25, 7.25]) - _ball_radius + 0.01
+    _env_lower_bound = np.array([-5/2 + _wall_thickness/2, -5/2 + _wall_thickness/2]) + _ball_radius -0.01
+    _env_upper_bound = np.array([20 - 5/2 -_wall_thickness/2, 10 - 5/2 - _wall_thickness/2]) - _ball_radius + 0.01
     _norm, _denorm = normalizer(_env_lower_bound, _env_upper_bound)
     _norm, _denorm = staticmethod(_norm), staticmethod(_denorm)
     _green_ball_initial_pos = [2, 0, _ball_radius]

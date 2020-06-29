@@ -10,7 +10,7 @@
   <link name="left_wall">
     <visual>
       <geometry>
-        <box size="20 0.5 1.5"/>
+        <box size="20 0.31 1.5"/>
       </geometry>
       <material name="wall_color"/>
     </visual>
@@ -28,7 +28,7 @@
   <link name="right_wall">
     <visual>
       <geometry>
-        <box size="20 0.5 1.5"/>
+        <box size="20 0.31 1.5"/>
       </geometry>
       <material name="wall_color"/>
     </visual>
@@ -51,7 +51,7 @@
   <link name="north_wall">
     <visual>
       <geometry>
-        <box size="10 0.5 1.5"/>
+        <box size="10 0.31 1.5"/>
       </geometry>
       <material name="wall_color"/>
     </visual>
@@ -69,7 +69,7 @@
   <link name="south_wall">
     <visual>
       <geometry>
-        <box size="10 0.5 1.5"/>
+        <box size="10 0.31 1.5"/>
       </geometry>
       <material name="wall_color"/>
     </visual>
@@ -97,7 +97,7 @@
   <link name="middle_wall">
     <visual>
       <geometry>
-        <box size="16 0.5 1.5"/>
+        <box size="16 0.31 1.5"/>
       </geometry>
       <material name="wall_color"/>
     </visual>

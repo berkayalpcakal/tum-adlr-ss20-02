@@ -9,7 +9,7 @@
     <link name="${name}">
       <visual>
         <geometry>
-          <box size="${length} 0.5 1.5"/>
+          <box size="${length} 0.31 1.5"/>
         </geometry>
         <material name="wall_color"/>
       </visual>
