@@ -5,11 +5,11 @@ import pytest
 
 from multi_goal.GenerativeGoalLearning import trajectory, null_agent
 from multi_goal.envs import Observation
-from multi_goal.envs.pybullet_labyrinth_env import Labyrinth
+from multi_goal.envs.pybullet_labyrinth_env import Labyrinth, HardLabyrinth
 from multi_goal.envs.toy_labyrinth_env import normalizer, ToyLabSimulator, ToyLab
 import numpy as np
 
-env_fns = [Labyrinth, ToyLab]
+env_fns = [Labyrinth, ToyLab, HardLabyrinth]
 
 
 @pytest.mark.parametrize("env_fn", env_fns)

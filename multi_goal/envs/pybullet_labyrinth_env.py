@@ -42,7 +42,7 @@ class SimpleLabyrinthConfig:
 class HardLabyrinthConfig(SimpleLabyrinthConfig):
     def __init__(self):
         self.fname = "assets/hard-labyrinth.urdf"
-        wall_len = 12
+        wall_len = 16
         self.position = [0, 0, 0]
         margin = self.wall_thickness/2 + self.ball_radius - 0.01
         self.lower_bound = np.array([-wall_len, -wall_len])/2 + margin

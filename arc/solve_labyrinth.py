@@ -1,4 +1,5 @@
 import click
+import gym
 
 from multi_goal.GenerativeGoalLearning import trajectory, Agent, evaluate
 from multi_goal.agents import PPOAgent, HERSACAgent
@@ -9,11 +10,12 @@ from multi_goal.envs.toy_labyrinth_env import ToyLab
 
 def viz(agent: Agent, env: ISettableGoalEnv):
     run = lambda g: sum(1 for _ in trajectory(
-        agent, env, goal=g, sleep_secs=0.05, render=True, print_every=1))
+        agent, env, goal=g, sleep_secs=0.0, render=True, print_every=1))
 
+    space = gym.spaces.Box(low=-1, high=1, shape=(2,))
     while True:
         env.render()
-        g = env.observation_space["desired_goal"].sample()
+        g = space.sample()
         print(f"Episode len: {run(g)}")
 
 
