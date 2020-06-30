@@ -17,9 +17,9 @@ from multi_goal.envs import Observation, ISettableGoalEnv
 
 
 class PPOAgent(Agent):
-    def __init__(self, env: ISettableGoalEnv, verbose=0, experiment_name="ppo"):
+    def __init__(self, env: ISettableGoalEnv, verbose=0, experiment_name="ppo", rank=0):
         self._env = env
-        self._dirs = Dirs(experiment_name=experiment_name + "-" + type(env).__name__)
+        self._dirs = Dirs(experiment_name=f"{type(env).__name__}-{experiment_name}-{rank}")
         self._flat_env = HERGoalEnvWrapper(env)
         options = {"env": DummyVecEnv([lambda: self._flat_env]), "tensorboard_log": self._dirs.tensorboard}
         if os.path.isdir(self._dirs.models):
@@ -42,16 +42,16 @@ class PPOAgent(Agent):
 
 
 class HERSACAgent(Agent):
-    def __init__(self, env: ISettableGoalEnv):
+    def __init__(self, env: ISettableGoalEnv, verbose=1, rank=0, experiment_name="her-sac"):
         self._env = env
-        self._dirs = Dirs(experiment_name="her-sac-" + type(env).__name__)
+        self._dirs = Dirs(experiment_name=f"{type(env).__name__}-{experiment_name}", rank=rank)
         options = {"env": env, "tensorboard_log": self._dirs.tensorboard, "model_class": SAC,
-                   "policy_kwargs": dict(layers=[128]*2)}
+                   "policy_kwargs": dict(layers=[128]*2), "gamma": 1}
         if os.path.isdir(self._dirs.models):
             self._model = HER.load(load_path=self._dirs.best_model, **options)
             print(f"Loaded model {self._dirs.best_model}")
         else:
-            self._model = HER(policy="MlpPolicy", verbose=1, **options)
+            self._model = HER(policy="MlpPolicy", verbose=verbose, **options)
 
     def __call__(self, obs: Observation) -> np.ndarray:
         action, _ = self._model.predict(obs, deterministic=True)

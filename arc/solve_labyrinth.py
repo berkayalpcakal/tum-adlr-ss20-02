@@ -42,26 +42,23 @@ class Envs:
 @click.option("--env", type=click.Choice(["toy", "bullet", "bullet_hard"]), default="toy", help="Simple Labyrinth env or Bullet one")
 @click.option("--num_steps", default=100000, show_default=True)
 @click.option("--random_starts", is_flag=True, default=False, show_default=True)
+@click.option("--seed", default=0, show_default=True)
 def cmd_main(*args, **kwargs):
     main(*args, **kwargs)
 
 
-def main(mode: str, alg: str, num_steps: int, random_starts: bool, env: str):
-    env_dict = {Envs.TOY: ToyLab, Envs.BULLET: Labyrinth, Envs.BULLET_HARD: HardLabyrinth}
-    env_fn = env_dict[env]
-
-    params = dict(use_random_starting_pos=random_starts)
+def main(mode: str, alg: str, num_steps: int, random_starts: bool, env: str, seed: int):
+    env_fns = {Envs.TOY: ToyLab, Envs.BULLET: Labyrinth, Envs.BULLET_HARD: HardLabyrinth}
+    env_params = dict(use_random_starting_pos=random_starts, seed=seed)
     if env == Envs.BULLET or env == Envs.BULLET_HARD:
-        params["visualize"] = mode == Mode.VIZ
-    e = env_fn(**params)
-    fixed_start_env = env_fn(use_random_starting_pos=False)
+        env_params["visualize"] = mode == Mode.VIZ
 
-    if alg == Algs.HERSAC:
-        agent = HERSACAgent(env=e)
-    elif alg == Algs.PPO:
-        agent = PPOAgent(env=e, verbose=1)
-    else:
-        raise NotImplementedError
+    e = env_fns[env](**env_params)
+    fixed_start_env = env_fns[env](use_random_starting_pos=False, seed=seed)
+
+    agent_fns = {Algs.HERSAC: HERSACAgent, Algs.PPO: PPOAgent}
+    agent_params = dict(env=e, verbose=1, rank=seed)
+    agent = agent_fns[alg](**agent_params)
 
     if mode == Mode.TRAIN:
         return agent.train(timesteps=num_steps, eval_env=fixed_start_env)

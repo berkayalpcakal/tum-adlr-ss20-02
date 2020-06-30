@@ -68,11 +68,11 @@ def display_goals(goals: np.ndarray, returns, idx, env: ISettableGoalEnv, fileNa
 
 
 class Dirs:
-    def __init__(self, experiment_name: str):
+    def __init__(self, experiment_name: str, rank=0):
         self.prefix = experiment_name
         this_fpath = os.path.realpath(os.path.join(os.getcwd(), os.path.dirname(__file__)))
         results = Path(this_fpath)/"../all-results"/experiment_name
-        self.models = str(results/"ckpts")
+        self.models = str(results/f"ckpts-{rank}")
         self.tensorboard = str(results/"tensorboard")
 
     @property
