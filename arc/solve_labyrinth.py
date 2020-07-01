@@ -42,7 +42,7 @@ class Envs:
 @click.option("--env", type=click.Choice(["toy", "bullet", "bullet_hard"]), default="toy", help="Simple Labyrinth env or Bullet one")
 @click.option("--num_steps", default=100000, show_default=True)
 @click.option("--random_starts", is_flag=True, default=False, show_default=True)
-@click.option("--seed", default=0, show_default=True)
+@click.option("--seed", default=1, show_default=True)
 def cmd_main(*args, **kwargs):
     main(*args, **kwargs)
 
