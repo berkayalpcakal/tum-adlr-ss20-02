@@ -6,6 +6,7 @@ from typing import Dict, Sequence, Tuple
 import numpy as np
 from matplotlib.collections import PathCollection
 import matplotlib.pyplot as plt
+from scipy import stats as st
 
 from multi_goal.envs import ISettableGoalEnv
 
@@ -47,7 +48,31 @@ def get_updateable_scatter():
     return fig, ax, scatter
 
 
-def display_goals(goals: np.ndarray, returns, idx, env: ISettableGoalEnv, fileNamePrefix ='goals'):
+def get_updateable_contour():
+    xmin, xmax = -12, 4
+    ymin, ymax = -4, 4
+
+    X, Y = S = np.mgrid[xmin:xmax:100j, ymin:ymax:100j]
+    positions = S.reshape((2, -1)).T
+    last_contours = []
+
+    def contour_fn(unnormed_data, ax):
+        if len(last_contours) > 0:
+            for c in last_contours.pop().collections:
+                c.remove()
+
+        kernel = st.gaussian_kde(unnormed_data.T)
+        z = np.reshape(kernel(positions.T), X.shape)
+
+        contours = ax.contourf(X, Y, z, cmap='Blues')
+        last_contours.append(contours)
+        #cset = ax.contour(X, Y, z, colors='k')
+        #ax.clabel(cset, inline=1, fontsize=10)
+
+    return contour_fn
+
+
+def display_goals(goals: np.ndarray, returns, idx, env: ISettableGoalEnv, fileNamePrefix ='goals', gan_goals=None):
     rewards = np.array(returns)
     low_reward_idx  = np.argwhere(0.1>rewards).reshape(-1,)
     high_reward_idx = np.argwhere(0.9<rewards).reshape(-1,)
@@ -62,7 +87,8 @@ def display_goals(goals: np.ndarray, returns, idx, env: ISettableGoalEnv, fileNa
               "blue": goid_reward_goals,
               "orange": env.starting_agent_pos}
     fig, ax = env.render(other_positions=colors,
-                         show_agent_and_goal_pos=False)
+                         show_agent_and_goal_pos=False,
+                         positions_density=gan_goals)
 
     fig.savefig("./figs/{}_{}.png".format(fileNamePrefix, idx))
 

@@ -3,7 +3,7 @@ from typing import Mapping
 import numpy as np
 
 from multi_goal.envs import normalizer, SettableGoalEnv, Simulator, SimObs
-from multi_goal.utils import get_updateable_scatter
+from multi_goal.utils import get_updateable_scatter, get_updateable_contour
 
 
 class ToyLab(SettableGoalEnv):
@@ -82,13 +82,16 @@ class ToyLabSimulator(Simulator):
         return np.linalg.norm(x1 - x2)**2 < self._max_single_action_dist
 
     def render(self, other_positions: Mapping[str, np.ndarray] = None,
-               show_agent_and_goal_pos=True):
+               show_agent_and_goal_pos=True, positions_density=None):
         if self._plot is None:
             self._plot = fig, ax, scatter_fn = get_updateable_scatter()
             ax.plot(*self.labyrinth_corners.T)
             fig.show()
 
         fig, ax, scatter_fn = self._plot
+
+        if positions_density is not None:
+            plot_contour_fn(unnormed_data=self._denormalize(positions_density), ax=ax)
 
         if other_positions is not None:
             for color, positions in other_positions.items():
@@ -107,6 +110,8 @@ class ToyLabSimulator(Simulator):
 
         return fig, ax
 
+
+plot_contour_fn = get_updateable_contour()
 
 if __name__ == '__main__':
     env = ToyLab(seed=1)

@@ -180,8 +180,8 @@ class SettableGoalEnv(ISettableGoalEnv):
         self.action_space.seed(seed)
         self.observation_space.seed(seed)
 
-    def render(self, other_positions: Mapping[str, np.ndarray] = None, show_agent_and_goal_pos=True):
-        return self._sim.render(other_positions=other_positions, show_agent_and_goal_pos=show_agent_and_goal_pos)
+    def render(self, *args, **kwargs):
+        return self._sim.render(*args, **kwargs)
 
 
 def dim_goal(env: gym.GoalEnv):
