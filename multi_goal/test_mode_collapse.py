@@ -11,12 +11,12 @@ from multi_goal.utils import get_updateable_contour
 
 def cirlce_coords(n_mixture, radius=0.7):
     some_rotation = 0.567
-    thetas = np.linspace(0, 2 * np.pi, n_mixture) + some_rotation
+    thetas = np.linspace(0, 2 * np.pi, n_mixture, endpoint=False) + some_rotation
     xs, ys = radius * np.sin(thetas), radius * np.cos(thetas)
     return xs, ys
 
 
-def multimodal_sample(batch_size, n_mixture=8, std=0.01):
+def multimodal_sample(batch_size, n_mixture=8, std=0.003):
     xs, ys = cirlce_coords(n_mixture)
     ms = [multivariate_normal(mean=[x, y], cov=std) for x, y in zip(xs, ys)]
     from_which_dist = np.random.randint(0, n_mixture, batch_size)
