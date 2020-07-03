@@ -48,9 +48,9 @@ def get_updateable_scatter():
     return fig, ax, scatter
 
 
-def get_updateable_contour():
-    xmin, xmax = -12, 4
-    ymin, ymax = -4, 4
+def get_updateable_contour(xlim=(-12, 4), ylim=(-4, 4)):
+    xmin, xmax = xlim
+    ymin, ymax = ylim
 
     X, Y = S = np.mgrid[xmin:xmax:100j, ymin:ymax:100j]
     positions = S.reshape((2, -1)).T
@@ -64,7 +64,7 @@ def get_updateable_contour():
         kernel = st.gaussian_kde(unnormed_data.T)
         z = np.reshape(kernel(positions.T), X.shape)
 
-        contours = ax.contourf(X, Y, z, cmap='Blues')
+        contours = ax.contourf(X, Y, z, cmap='Blues', zorder=-1)
         last_contours.append(contours)
         #cset = ax.contour(X, Y, z, colors='k')
         #ax.clabel(cset, inline=1, fontsize=10)
