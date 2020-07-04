@@ -53,17 +53,18 @@ def main(π: Agent, goalGAN: LSGAN, env: ISettableGoalEnv, eval_env: ISettableGo
 
     for i in range(initial_iterations, iterations):
         print(f"\n### BEGIN ITERATION {i} ###")
-        z          = torch.randn(size=(num_gan_goals, goalGAN.Generator.noise_size))
-        gan_goals  = goalGAN.Generator.forward(z).detach()
-        rand_goals = torch.Tensor(num_rand_goals, dim_goal(env)).uniform_(-1, 1)
-        all_goals  = torch.cat([gan_goals, sample(goals_old, k=num_old_goals), rand_goals])
-        π, returns = update_and_eval_policy(all_goals, π, env, eval_env)
-        display_goals(all_goals.detach().numpy(), returns, i, env, gan_goals=gan_goals.numpy())
+        z             = torch.randn(size=(num_gan_goals, goalGAN.Generator.noise_size))
+        raw_gan_goals = goalGAN.Generator.forward(z).detach()
+        gan_goals     = torch.clamp(raw_gan_goals + 0.1*torch.randn(num_gan_goals, dim_goal(env)), min=-1, max=1)
+        rand_goals    = torch.Tensor(num_rand_goals, dim_goal(env)).uniform_(-1, 1)
+        all_goals     = torch.cat([gan_goals, sample(goals_old, k=num_old_goals), rand_goals])
+        π, returns    = update_and_eval_policy(all_goals, π, env, eval_env)
+        display_goals(all_goals.detach().numpy(), returns, i, env, gan_goals=raw_gan_goals.numpy())
         print(f"Average reward: {(sum(returns) / len(returns)):.2f}")
-        labels     = label_goals(returns)
+        labels        = label_goals(returns)
         if all([lab == 0 for lab in labels]): warnings.warn("All labels are 0")
-        goalGAN    = train_GAN(all_goals, labels, goalGAN)
-        goals_old  = update_replay(all_goals, goals_old=goals_old)
+        goalGAN       = train_GAN(all_goals, labels, goalGAN)
+        goals_old     = update_replay(gan_goals, goals_old=goals_old)
 
 
 if __name__ == '__main__':

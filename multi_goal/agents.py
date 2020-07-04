@@ -21,7 +21,8 @@ class PPOAgent(Agent):
         self._env = env
         self._dirs = Dirs(experiment_name=f"{type(env).__name__}-{experiment_name}-{rank}")
         self._flat_env = HERGoalEnvWrapper(env)
-        options = {"env": DummyVecEnv([lambda: self._flat_env]), "tensorboard_log": self._dirs.tensorboard}
+        options = {"env": DummyVecEnv([lambda: self._flat_env]), "tensorboard_log": self._dirs.tensorboard,
+                   "gamma": 1, "seed": rank, "nminibatches": 1}
         if os.path.isdir(self._dirs.models):
             self._model = PPO2.load(load_path=self._dirs.best_model, **options)
             print(f"Loaded model {self._dirs.best_model}")
