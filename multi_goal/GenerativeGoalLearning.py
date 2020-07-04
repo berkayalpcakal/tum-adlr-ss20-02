@@ -21,7 +21,6 @@ G_Hidden_Size = 256
 D_Hidden_Size = 512
 ####################
 
-Goals = Tensor
 Returns = Sequence[float]
 
 
@@ -63,7 +62,7 @@ def initialize_GAN(env: gym.GoalEnv) -> LSGAN:
 
 
 @print_message("Training the policy on current goals")
-def update_and_eval_policy(goals: Goals, π: Agent, env: ISettableGoalEnv, eval_env: ISettableGoalEnv) -> Tuple[Agent, Returns]:
+def update_and_eval_policy(goals: Tensor, π: Agent, env: ISettableGoalEnv, eval_env: ISettableGoalEnv) -> Tuple[Agent, Returns]:
     env.set_possible_goals(goals.numpy())
     env.reset()
     π.train(timesteps=env.max_episode_len*len(goals)*3, num_checkpoints=1, eval_env=eval_env)
@@ -75,8 +74,8 @@ def update_and_eval_policy(goals: Goals, π: Agent, env: ISettableGoalEnv, eval_
     return π, returns
 
 
-def eval_policy(goals: Goals, π: Agent, env: ISettableGoalEnv):
-    for g in goals:
+def eval_policy(goals: Tensor, π: Agent, env: ISettableGoalEnv):
+    for g in goals.numpy():
         for obs, action, reward, next_obs, done, info in trajectory(π, env, goal=g):
             if info.get("is_success"):
                 break
@@ -90,7 +89,7 @@ def label_goals(returns: Returns) -> Sequence[int]:
 
 
 @print_message("Training GAN on current goals")
-def train_GAN(goals: Goals, labels: Sequence[int], goalGAN):
+def train_GAN(goals: Tensor, labels: Sequence[int], goalGAN):
     y: Tensor = torch.Tensor(labels).reshape(len(labels), 1)
     D = goalGAN.Discriminator.forward
     G = goalGAN.Generator.forward

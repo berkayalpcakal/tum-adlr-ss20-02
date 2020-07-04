@@ -1,11 +1,12 @@
 import warnings
 from multi_goal.GenerativeGoalLearning import initialize_GAN, update_and_eval_policy, \
-    label_goals, train_GAN, sample, update_replay
+    label_goals, train_GAN, sample, update_replay, Agent
+from multi_goal.LSGAN import LSGAN
 from multi_goal.agents import PPOAgent
 import numpy as np
 import torch
 from torchsummary import summary
-from multi_goal.envs import dim_goal
+from multi_goal.envs import dim_goal, ISettableGoalEnv
 from multi_goal.envs.toy_labyrinth_env import ToyLab
 from multi_goal.utils import display_goals
 
@@ -25,53 +26,53 @@ for i in iterations:
 
 #### PARAMETERS ####
 # The rest of the params are in goalGAN.py
-initial_iterations         = 5
-iterations                 = 1000
-num_samples_goalGAN_goals  = 60
-num_samples_from_old_goals = num_samples_goalGAN_goals // 2
-num_samples_random_goals   = num_samples_goalGAN_goals // 2
+initial_iterations  = 5
+iterations          = 1000
+num_gan_goals       = 60
+num_old_goals       = num_gan_goals // 2
+num_rand_goals      = num_gan_goals // 2
 
-SEED = 1000 #random.randint(0,2**32-1)
+SEED = 0
 np.random.seed(SEED)
-torch.set_default_dtype(torch.float64)
+torch.random.manual_seed(SEED)
 ####################
 
-env       = ToyLab()
-eval_env  = ToyLab()  # Must be a different instance.
-π         = PPOAgent(env=env, experiment_name="goalgan-ppo")
-goalGAN   = initialize_GAN(env=env)
-goals_old = torch.Tensor([env.starting_agent_pos]) + torch.randn(num_samples_from_old_goals, dim_goal(env)) * 0.1
 
-### print model summary
-goalGAN.Generator=goalGAN.Generator.float(); goalGAN.Discriminator=goalGAN.Discriminator.float()
-summary(goalGAN.Generator,     input_size=(1,1,4), device='cpu')
-summary(goalGAN.Discriminator, input_size=(1,1,2), device='cpu')
-goalGAN.Generator=goalGAN.Generator.double(); goalGAN.Discriminator=goalGAN.Discriminator.double()
-#######################
+def main(π: Agent, goalGAN: LSGAN, env: ISettableGoalEnv, eval_env: ISettableGoalEnv):
+    # Initial training of the policy with random goals
+    for i in range(initial_iterations):
+        rand_goals = torch.Tensor(num_rand_goals, dim_goal(env)).uniform_(-1, 0)
+        π, returns = update_and_eval_policy(rand_goals, π, env, eval_env)
+        print(f"Average reward: {(sum(returns) / len(returns)):.2f}")
+        labels     = label_goals(returns)
+        display_goals(rand_goals.detach().numpy(), returns, i, env, fileNamePrefix='_')
+        goalGAN    = train_GAN(rand_goals, labels, goalGAN)
 
-## Initial training of the policy with random goals
-goals_plot = None
-for i in range(initial_iterations):
-    rand_goals = torch.tensor(np.random.uniform(-1, 0, size=(num_samples_random_goals, 2)))
-    π,returns  = update_and_eval_policy(rand_goals, π, env, eval_env)
-    print(f"Average reward: {(sum(returns) / len(returns)):.2f}")
-    labels     = label_goals(returns)
-    print(f"Percentage of 0 vs 1 labels: {[round(n, 2) for n in (np.bincount(labels) / len(labels))]}")
-    display_goals(rand_goals.detach().numpy(), returns, i, env, fileNamePrefix='_')
-    goalGAN    = train_GAN(rand_goals, labels, goalGAN)
+    close_to_starting_pos = torch.Tensor([env.starting_agent_pos]) + 0.1*torch.randn(num_old_goals, dim_goal(env))
+    goals_old = torch.clamp(close_to_starting_pos, min=-1, max=1)
+
+    for i in range(initial_iterations, iterations):
+        print(f"\n### BEGIN ITERATION {i} ###")
+        z          = torch.randn(size=(num_gan_goals, goalGAN.Generator.noise_size))
+        gan_goals  = goalGAN.Generator.forward(z).detach()
+        rand_goals = torch.Tensor(num_rand_goals, dim_goal(env)).uniform_(-1, 1)
+        all_goals  = torch.cat([gan_goals, sample(goals_old, k=num_old_goals), rand_goals])
+        π, returns = update_and_eval_policy(all_goals, π, env, eval_env)
+        display_goals(all_goals.detach().numpy(), returns, i, env, gan_goals=gan_goals.numpy())
+        print(f"Average reward: {(sum(returns) / len(returns)):.2f}")
+        labels     = label_goals(returns)
+        if all([lab == 0 for lab in labels]): warnings.warn("All labels are 0")
+        goalGAN    = train_GAN(all_goals, labels, goalGAN)
+        goals_old  = update_replay(all_goals, goals_old=goals_old)
 
 
-for i in range(initial_iterations, iterations):
-    print(f"\n### BEGIN ITERATION {i} ###")
-    z          = torch.randn(size=(num_samples_goalGAN_goals, goalGAN.Generator.noise_size))
-    gan_goals  = goalGAN.Generator.forward(z).detach()
-    rand_goals = torch.tensor(np.random.uniform(-1, 1, size=(num_samples_random_goals, 2)))
-    all_goals  = torch.cat([gan_goals, sample(goals_old, k=num_samples_from_old_goals), rand_goals])
-    π, returns = update_and_eval_policy(all_goals, π, env, eval_env)
-    display_goals(all_goals.detach().numpy(), returns, i, env, gan_goals=gan_goals.numpy())
-    print(f"Average reward: {(sum(returns) / len(returns)):.2f}")
-    labels     = label_goals(returns)
-    print(f"Percentage of 0 vs 1 labels: {[round(n, 2) for n in (np.bincount(labels) / len(labels))]}")
-    if all([lab == 0 for lab in labels]): warnings.warn("All labels are 0")
-    goalGAN    = train_GAN(all_goals, labels, goalGAN)
-    goals_old  = update_replay(all_goals, goals_old=goals_old)
+if __name__ == '__main__':
+    env       = ToyLab()
+    eval_env  = ToyLab()  # Must be a different instance, used for visualizations only.
+    π         = PPOAgent(env=env, experiment_name="goalgan-ppo")
+    goalGAN   = initialize_GAN(env=env)
+
+    summary(goalGAN.Generator,     input_size=(1, 1, 4), device='cpu')
+    summary(goalGAN.Discriminator, input_size=(1, 1, 2), device='cpu')
+
+    main(π=π, goalGAN=goalGAN, env=env, eval_env=eval_env)
