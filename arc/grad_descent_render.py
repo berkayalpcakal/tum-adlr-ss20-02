@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 from matplotlib.cm import viridis
 import torch
 
-from arc.action_reps_control import ActionableRep, ARCAgent
+from arc.action_reps_control import ActionableRep, ARCDescentAgent
 from multi_goal.GenerativeGoalLearning import trajectory
 from multi_goal.envs.toy_labyrinth_env import ToyLab
 
@@ -37,7 +37,7 @@ def gradient_descent_rendering():
 
 fig, ax = gradient_descent_rendering()
 env = ToyLab(max_episode_len=60, use_random_starting_pos=True, seed=1)
-agent = ARCAgent(phi=phi, env=env)
+agent = ARCDescentAgent(phi=phi, env=env)
 while True:
     agent.reset_momentum()
     t = trajectory(pi=agent, env=env, goal=goal, print_every=100)

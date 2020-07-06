@@ -29,7 +29,7 @@ class Observation(OrderedDict):
 
 class ISettableGoalEnv(ABC, gym.GoalEnv):
     max_episode_len: int
-    starting_obs: np.ndarray
+    starting_agent_pos: np.ndarray
 
     def set_possible_goals(self, goals: Optional[np.ndarray], entire_space=False) -> None:
         raise NotImplementedError
@@ -143,7 +143,6 @@ class SettableGoalEnv(ISettableGoalEnv):
         return max(self.reward_range) if is_success else min(self.reward_range)
 
     def reset(self) -> Observation:
-        super().reset()
         self._step_num = 0
 
         self._agent_pos = self._new_initial_pos()

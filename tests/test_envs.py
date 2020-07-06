@@ -3,13 +3,19 @@ from itertools import combinations
 import gym
 import pytest
 
+from arc.action_reps_control import ARCEnvWrapper, ActionableRep
 from multi_goal.GenerativeGoalLearning import trajectory, null_agent
 from multi_goal.envs import Observation
 from multi_goal.envs.pybullet_labyrinth_env import Labyrinth, HardLabyrinth
 from multi_goal.envs.toy_labyrinth_env import normalizer, ToyLabSimulator, ToyLab
 import numpy as np
 
-env_fns = [Labyrinth, ToyLab, HardLabyrinth]
+
+def arc_wrapper_ctor(*args, **kwargs):
+    return ARCEnvWrapper(env=ToyLab(*args, **kwargs))
+
+
+env_fns = [Labyrinth, ToyLab, HardLabyrinth, arc_wrapper_ctor]
 
 
 @pytest.mark.parametrize("env_fn", env_fns)
@@ -106,21 +112,28 @@ def test_moving_one_step_away_from_goal_still_success(env_fn):
 @pytest.mark.parametrize("env_fn", env_fns)
 def test_seed_determines_trajectories(env_fn):
     null = np.zeros(shape=env_fn().action_space.shape)
-    assert env_fn(seed=0).step(null)[0] == env_fn(seed=0).step(null)[0]
+    first_obs = env_fn(seed=0).step(null)[0]
+    again = env_fn(seed=0).step(null)[0]
+    assert first_obs == again
     assert env_fn(seed=0).step(null)[0] != env_fn(seed=1).step(null)[0]
 
-    env = env_fn(seed=0)
-    mk_actions = lambda: [env.action_space.sample() for _ in range(10)]
-    mk_obs = lambda: [env.reset() for _ in range(10)]
+    mk_actions = lambda env: [env.action_space.sample() for _ in range(10)]
+    mk_obs = lambda env: [env.reset() for _ in range(10)]
 
-    actions = mk_actions()
-    obss = mk_obs()
+    env = env_fn(seed=1)
+    actions = mk_actions(env)
+    obss = mk_obs(env)
     trajectory = [env.step(a) for a in actions]
 
-    env.seed(0)
+    env2 = env_fn(seed=1)
+    assert np.allclose(mk_actions(env2), actions)
+    assert mk_obs(env2) == obss
+
+    env.seed(1)
     env.reset()
-    assert np.allclose(actions, mk_actions())
-    assert obss == mk_obs()
+    assert np.allclose(actions, mk_actions(env))
+    new_obs = mk_obs(env)
+    assert obss == new_obs
     assert trajectory == [env.step(a) for a in actions]
 
 
@@ -186,7 +199,7 @@ def test_env_trajectory(env_fn):
 
 @pytest.mark.parametrize("env_fn", env_fns)
 def test_random_goals_cover_space(env_fn):
-    env = env_fn()
+    env = env_fn(seed=0)
     null_step = np.zeros(shape=env.action_space.shape)
     instantiation_goals = np.array([env_fn(seed=i).step(null_step)[0].desired_goal for i in range(100)])
     assert cover_space(instantiation_goals)
@@ -200,7 +213,11 @@ def cover_space(samples: np.ndarray, tolerance=0.03) -> bool:
             np.allclose(samples.max(axis=0), 1, atol=tolerance))
 
 
-@pytest.mark.parametrize("env_fn,obs_size", [(Labyrinth, 2), (ToyLab, 0)])
+@pytest.mark.parametrize("env_fn,obs_size", [
+    (Labyrinth, 2),
+    (ToyLab, 0),
+    (arc_wrapper_ctor, 2*ActionableRep.DEFAULT_ARC_DIM)
+])
 def test_obs_size_as_expected(env_fn, obs_size):
     env = env_fn()
     assert env.observation_space["observation"].shape[0] == obs_size

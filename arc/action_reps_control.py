@@ -1,7 +1,8 @@
 import os
 import random
-from typing import Sequence, Callable, List
+from typing import Sequence, Callable, List, Mapping, Optional
 
+import gym
 import numpy as np
 import torch
 from stable_baselines.her import HERGoalEnvWrapper
@@ -13,7 +14,7 @@ from torch.distributions.kl import kl_divergence as KL
 
 from multi_goal.GenerativeGoalLearning import Agent, trajectory
 from multi_goal.agents import HERSACAgent
-from multi_goal.envs import Observation, ISettableGoalEnv
+from multi_goal.envs import Observation, ISettableGoalEnv, GoalHashable
 from multi_goal.envs.pybullet_labyrinth_env import Labyrinth
 
 ObservationSeq = Sequence[Observation]
@@ -48,10 +49,13 @@ def Dact(g1: np.ndarray, g2: np.ndarray, D_: ObservationSeq, pi: GaussianPolicy)
 
 
 class ActionableRep(nn.Module):
-    def __init__(self, input_size: int = 2):
+    DEFAULT_ARC_DIM = 3
+
+    def __init__(self, input_size: int = 2, seed=0):
         super().__init__()
+        torch.random.manual_seed(seed)
         hidden_layer_size = 128
-        acr_size = 3
+        self.arc_dim = self.DEFAULT_ARC_DIM
 
         self.layers = nn.Sequential(
             nn.Linear(input_size, hidden_layer_size),
@@ -60,16 +64,14 @@ class ActionableRep(nn.Module):
             nn.LeakyReLU(),
             nn.Linear(hidden_layer_size, hidden_layer_size),
             nn.LeakyReLU(),
-            nn.Linear(hidden_layer_size, hidden_layer_size),
-            nn.LeakyReLU(),
-            nn.Linear(hidden_layer_size, acr_size),
+            nn.Linear(hidden_layer_size, self.arc_dim),
         )
 
     def forward(self, x: Tensor) -> Tensor:
         return self.layers(x)
 
 
-class ARCAgent(Agent):
+class ARCDescentAgent(Agent):
     _fpath = os.path.realpath(os.path.join(os.getcwd(), os.path.dirname(__file__)))
     _arc_fpath = os.path.join(_fpath, "pts/arc-bullet.pt")
 
@@ -107,9 +109,61 @@ class ARCAgent(Agent):
         self._opt = self._make_opt()
 
 
+class ARCEnvWrapper(ISettableGoalEnv):
+    def __init__(self, env: ISettableGoalEnv):
+        self._delegate = env
+        self._phi = ActionableRep(input_size=env.observation_space["desired_goal"].shape[0])
+
+        spaces = ["achieved_goal", "desired_goal"]
+        random_states = {s: env.observation_space[s].np_random.get_state() for s in spaces}
+        new_obs_dim = env.observation_space["observation"].shape[0] + 2*self._phi.arc_dim
+        self.observation_space = gym.spaces.Dict(spaces={
+            "observation": gym.spaces.Box(low=-np.inf, high=np.inf, shape=(new_obs_dim,)),
+            "achieved_goal": env.observation_space["achieved_goal"],
+            "desired_goal": env.observation_space["desired_goal"]
+        })
+        [env.observation_space[s].np_random.set_state(random_states[s]) for s in spaces]
+
+        self.action_space = env.action_space
+        self.reward_range = env.reward_range
+        self.starting_agent_pos = env.starting_agent_pos
+        self.max_episode_len = env.max_episode_len
+
+    def set_possible_goals(self, goals: Optional[np.ndarray], entire_space=False) -> None:
+        return self._delegate.set_possible_goals(goals=goals, entire_space=entire_space)
+
+    def get_successes_of_goals(self) -> Mapping[GoalHashable, List[bool]]:
+        return self._delegate.get_successes_of_goals()
+
+    def compute_reward(self, achieved_goal, desired_goal, info):
+        return self._delegate.compute_reward(achieved_goal=achieved_goal,
+                                             desired_goal=desired_goal, info=info)
+
+    def step(self, action):
+        obs: Observation
+        obs, r, done, info = self._delegate.step(action=action)
+        obs = self._enrich_obs(obs)
+        return obs, r, done, info
+
+    def _enrich_obs(self, obs: Observation) -> Observation:
+        rep = self._phi(Tensor([obs.achieved_goal, obs.desired_goal])).detach().numpy()
+        new_obs = np.concatenate((obs.observation, *rep))
+        return Observation(observation=new_obs, achieved_goal=obs.achieved_goal, desired_goal=obs.desired_goal)
+
+    def render(self, *args, **kwargs):
+        return self._delegate.render(*args, **kwargs)
+
+    def reset(self) -> Observation:
+        obs = self._delegate.reset()
+        return self._enrich_obs(obs)
+
+    def seed(self, seed=None):
+        self._delegate.seed(seed)
+
+
 if __name__ == '__main__':
     env = Labyrinth(max_episode_len=200, visualize=True)
-    agent = ARCAgent(env=env)
+    agent = ARCDescentAgent(env=env)
     # evaluate(agent, env, very_granular=False)
     # input("exit")
 
