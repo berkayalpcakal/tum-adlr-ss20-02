@@ -5,6 +5,7 @@ from typing import Sequence, Callable, List, Mapping, Optional
 import gym
 import numpy as np
 import torch
+from stable_baselines.common.callbacks import BaseCallback
 from stable_baselines.her import HERGoalEnvWrapper
 from torch import Tensor
 
@@ -110,9 +111,9 @@ class ARCDescentAgent(Agent):
 
 
 class ARCEnvWrapper(ISettableGoalEnv):
-    def __init__(self, env: ISettableGoalEnv):
+    def __init__(self, env: ISettableGoalEnv, phi: ActionableRep = None):
         self._delegate = env
-        self._phi = ActionableRep(input_size=env.observation_space["desired_goal"].shape[0])
+        self._phi = phi if phi is not None else ActionableRep(input_size=env.observation_space["desired_goal"].shape[0])
 
         spaces = ["achieved_goal", "desired_goal"]
         random_states = {s: env.observation_space[s].np_random.get_state() for s in spaces}
@@ -159,6 +160,30 @@ class ARCEnvWrapper(ISettableGoalEnv):
 
     def seed(self, seed=None):
         self._delegate.seed(seed)
+
+
+class ARCTrainingAgent(Agent):
+    def __init__(self, env: ISettableGoalEnv, rank=0):
+        self._env = env
+        self._phi = ActionableRep(input_size=env.observation_space["desired_goal"].shape[0], seed=rank)
+        arc_env = ARCEnvWrapper(env=env, phi=self._phi)
+        self._agent = HERSACAgent(env=arc_env, rank=rank, experiment_name="her-sac-arc")
+        self._train_arc_callback = TrainARCCallback(phi=self._phi)
+
+    def __call__(self, obs: Observation) -> np.ndarray:
+        return self._agent(obs)
+
+    def train(self, timesteps: int) -> None:
+        self._agent.train(timesteps=timesteps, callbacks=[self._train_arc_callback])
+
+
+class TrainARCCallback(BaseCallback):
+    def __init__(self, phi: ActionableRep):
+        super().__init__()
+        self._phi = phi
+
+    def on_step(self) -> bool:
+        return True
 
 
 if __name__ == '__main__':

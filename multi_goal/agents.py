@@ -1,6 +1,7 @@
 import os
 import warnings
 from datetime import datetime
+from typing import List, Sequence
 
 import numpy as np
 from stable_baselines.common.callbacks import CheckpointCallback, BaseCallback, CallbackList
@@ -37,8 +38,8 @@ class PPOAgent(Agent):
     def train(self, timesteps: int, num_checkpoints=4, eval_env: ISettableGoalEnv = None):
         ppo_offset = 128
         env = self._env if eval_env is None else eval_env
-        cb = make_callback(timesteps=timesteps, num_checkpoints=num_checkpoints,
-                           dirs=self._dirs, agent=self, env=env)
+        cb = CallbackList(make_callbacks(timesteps=timesteps, num_checkpoints=num_checkpoints,
+                                         dirs=self._dirs, agent=self, env=env))
         self._model.learn(total_timesteps=timesteps+ppo_offset, callback=cb)
 
 
@@ -58,18 +59,21 @@ class HERSACAgent(Agent):
         action, _ = self._model.predict(obs, deterministic=True)
         return action
 
-    def train(self, timesteps: int, eval_env: ISettableGoalEnv = None) -> None:
+    def train(self, timesteps: int, eval_env: ISettableGoalEnv = None,
+              callbacks: Sequence[BaseCallback] = None) -> None:
         num_checkpoints = 4
         env = self._env if eval_env is None else eval_env
-        cb = make_callback(timesteps, num_checkpoints, self._dirs, self, env)
+        callbacks = [] if callbacks is None else callbacks
+        cb = CallbackList([*make_callbacks(timesteps, num_checkpoints, self._dirs, self, env), *callbacks])
         self._model.learn(total_timesteps=timesteps, callback=cb)
 
 
-def make_callback(timesteps: int, num_checkpoints: int, dirs: Dirs, agent: Agent, env: ISettableGoalEnv):
-    return CallbackList([
+def make_callbacks(timesteps: int, num_checkpoints: int, dirs: Dirs,
+                   agent: Agent, env: ISettableGoalEnv) -> List[BaseCallback]:
+    return [
         CheckpointCallback(save_freq=timesteps//num_checkpoints, save_path=dirs.models, name_prefix=dirs.prefix),
         #EvaluateCallback(agent=agent, env=env)
-    ])
+    ]
 
 
 class EvaluateCallback(BaseCallback):
