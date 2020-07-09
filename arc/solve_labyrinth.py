@@ -1,6 +1,7 @@
 import click
 import gym
 
+from arc.action_reps_control import ARCTrainingAgent
 from multi_goal.GenerativeGoalLearning import trajectory, Agent, evaluate
 from multi_goal.agents import PPOAgent, HERSACAgent
 from multi_goal.envs import ISettableGoalEnv
@@ -22,6 +23,7 @@ def viz(agent: Agent, env: ISettableGoalEnv):
 class Algs:
     HERSAC = "her-sac"
     PPO    = "ppo"
+    ARC    = "arc"
 
 
 class Mode:
@@ -38,7 +40,7 @@ class Envs:
 
 @click.command()
 @click.option("--mode", type=click.Choice([Mode.TRAIN, Mode.VIZ, Mode.EVAL]))
-@click.option("--alg", type=click.Choice(['her-sac', 'ppo']), default="her-sac", help="Algorithm: 'her' (HER+SAC) or 'ppo' available.")
+@click.option("--alg", type=click.Choice(['her-sac', 'ppo', "arc"]), default="her-sac", help="Algorithm: 'her' (HER+SAC) or 'ppo' available.")
 @click.option("--env", type=click.Choice(["toy", "bullet", "bullet_hard"]), default="toy", help="Simple Labyrinth env or Bullet one")
 @click.option("--num_steps", default=100000, show_default=True)
 @click.option("--random_starts", is_flag=True, default=False, show_default=True)
@@ -56,7 +58,7 @@ def main(mode: str, alg: str, num_steps: int, random_starts: bool, env: str, see
     e = env_fns[env](**env_params)
     fixed_start_env = env_fns[env](use_random_starting_pos=False, seed=seed)
 
-    agent_fns = {Algs.HERSAC: HERSACAgent, Algs.PPO: PPOAgent}
+    agent_fns = {Algs.HERSAC: HERSACAgent, Algs.PPO: PPOAgent, Algs.ARC: ARCTrainingAgent}
     agent_params = dict(env=e, verbose=1, rank=seed)
     agent = agent_fns[alg](**agent_params)
 

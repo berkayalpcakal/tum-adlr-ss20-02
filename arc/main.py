@@ -1,5 +1,4 @@
 import os
-import random
 from datetime import datetime
 from itertools import islice, count
 from typing import Iterable
@@ -7,17 +6,15 @@ from typing import Iterable
 import matplotlib.pyplot as plt
 import torch
 import numpy as np
-from torch.optim.adamw import AdamW
+from more_itertools import consume
 
 from multi_goal.GenerativeGoalLearning import trajectory
 from multi_goal.agents import HERSACAgent
-from arc.action_reps_control import get_gaussian_pi, ActionableRep, ObservationSeq, Dact, \
-    GaussianPolicy
+from arc.action_reps_control import get_gaussian_pi, ActionableRep, ObservationSeq, train_arc
 
-from torch import nn
 from torch import Tensor
 
-from multi_goal.envs.pybullet_labyrinth_env import Labyrinth
+from multi_goal.envs.toy_labyrinth_env import ToyLab
 
 
 def take(n: int, it: Iterable):
@@ -59,65 +56,38 @@ def init_viz():
     return viz
 
 
-def avg_Dact(dataset: ObservationSeq, pi: GaussianPolicy):
-    def sample():
-        o1, o2 = random.sample(dataset, 2)
-        return Dact(o1.desired_goal, o2.desired_goal, dataset, pi=pi)
-
-    return np.array([sample() for _ in range(300)]).mean()
-
-
 if __name__ == '__main__':
-    plt.ion()
-    env = Labyrinth(use_random_starting_pos=True)
-    agent = HERSACAgent(env=env)
+    # plt.ion()
+    env = ToyLab(use_random_starting_pos=True)
+    agent = HERSACAgent(env=env, rank=1)
     gaussian_pi = get_gaussian_pi(agent, env)
 
     traj_lens = [len(list(trajectory(agent, env))) for _ in range(100)]
-    bins = np.bincount(traj_lens)
-    fig, ax = plt.subplots()
-    ax.bar(range(len(bins)), bins)
-    env = Labyrinth(max_episode_len=int(2 * np.mean(traj_lens)), use_random_starting_pos=True)
+    # bins = np.bincount(traj_lens)
+    # fig, ax = plt.subplots()
+    # ax.bar(range(len(bins)), bins)
+
+    env = ToyLab(max_episode_len=int(2 * np.mean(traj_lens)), use_random_starting_pos=True)
     traj_gen = ([step[3] for step in trajectory(agent, env)] for _ in count())
     phi = ActionableRep(input_size=env.observation_space["achieved_goal"].shape[0])
-    fname = "arc-bullet.pt"
+    fname = "arc.pt"
     if os.path.isfile(fname):
         phi.load_state_dict(torch.load(fname))
         print("loaded previous state")
-    optimizer = AdamW(phi.parameters(), lr=1e-3)
-    loss_fn = nn.MSELoss()
-    num_epochs = 100
-    num_trajectories = 200
+
+    num_trajectories = 50
     trajectories = take(num_trajectories, traj_gen)
     D: ObservationSeq = [obs for t in trajectories for obs in t]
 
-    goals = np.array([t[0].desired_goal for t in trajectories])
-    fig, axs = plt.subplots(1, 2, sharex=True, sharey=True)
-    axs[0].set_ylim((-1, 1)); axs[0].set_xlim((-1, 1))
-    axs[0].scatter(*goals.T)
-    for t in trajectories:
-        states = np.array([o.achieved_goal for o in t])
-        axs[1].plot(*states.T)
-    for ax in axs:
-        ax.plot(*wall.T, c="red")
-        ax.scatter(*starting_pos, c="orange")
-    viz = init_viz()
-    viz(phi)
+    # goals = np.array([t[0].desired_goal for t in trajectories])
+    # fig, axs = plt.subplots(1, 2, sharex=True, sharey=True)
+    # axs[0].set_ylim((-1, 1)); axs[0].set_xlim((-1, 1))
+    # axs[0].scatter(*goals.T)
+    # for t in trajectories:
+    #     states = np.array([o.achieved_goal for o in t])
+    #     axs[1].plot(*states.T)
+    # for ax in axs:
+    #     ax.plot(*wall.T, c="red")
+    #     ax.scatter(*starting_pos, c="orange")
 
-    avg = avg_Dact(dataset=D, pi=gaussian_pi)
-    epoch_len = sum((len(t) for t in trajectories))
-    for epoch in range(1, num_epochs):
-        losses = []
-        for _ in range(epoch_len):
-            traj1, traj2 = random.sample(trajectories, k=2)
-            s1, s2 = [Tensor(random.choice(tr).achieved_goal).float() for tr in [traj1, traj2]]
-
-            optimizer.zero_grad()
-            loss = loss_fn(torch.dist(phi(s1), phi(s2)), Dact(s1, s2, D, pi=gaussian_pi)/avg)
-            loss.backward()
-            optimizer.step()
-            losses.append(float(loss))
-            viz(phi)
-        if epoch % 10 == 0:
-            torch.save(phi.state_dict(), fname)
-        print(f"Epoch finished: {epoch}, loss: {np.mean(losses):.3f}", flush=True)
+    consume(train_arc(D=D, gaussian_pi=gaussian_pi, phi=phi))

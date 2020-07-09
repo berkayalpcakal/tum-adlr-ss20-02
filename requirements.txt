@@ -2,10 +2,8 @@ gym
 pybullet
 numpy
 pytest
-tensorflow
-stable-baselines
 click
 typeguard
 scikit-learn
 torchsummary
-
+runstats
