@@ -179,7 +179,7 @@ class ARCTrainingAgent(Agent):
         self._replay_buffer: ReplayBuffer = self._agent._model.model.replay_buffer
         self._train_arc_callback = TrainARCCallback(train_fn=self._train_arc)
         self._rank = rank
-        self._arc_tb_logger = SummaryWriter(log_dir=str(Path(self._agent._dirs.tensorboard)/"ARC"), )
+        self._arc_tb_logger = SummaryWriter(log_dir=str(Path(self._agent._dirs.tensorboard)/f"ARC_{rank}"), )
         self._arc_step = count()
         self._dact_stats = Statistics([1.0])
 
