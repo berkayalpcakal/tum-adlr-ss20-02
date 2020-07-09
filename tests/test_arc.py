@@ -9,4 +9,4 @@ def test_class_instantation():
     phi = ActionableRep()
     a = ARCDescentAgent(env=env, phi=phi)
     a2 = ARCTrainingAgent(env=env)
-    cb = TrainARCCallback(function_to_call=lambda: None)
+    cb = TrainARCCallback(train_fn=lambda x: None)
