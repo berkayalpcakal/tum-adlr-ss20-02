@@ -12,12 +12,13 @@ from multi_goal.utils import get_updateable_contour
 ####
 start_point = np.array([-0.25, -0.50])
 num_samples = 100
+num_noise_samples = num_samples // 2
 num_mixtures = 4
-eps = 0.1
+eps = 0.2
 
 def create_target_trajectory():
     # for simple U-shaped maze
-    delta = 0.05
+    delta = 0.01
 
     trajectory = []; angles = []
     trajectory.append(start_point); angles.append(np.array([0.567]))
@@ -56,6 +57,7 @@ def do_label(target_pts, train_data, eps):
     tree      = KDTree(target_pts)
     dist, idx =tree.query(train_data)
     labels[np.argwhere(dist < eps)[:,0].reshape(-1)] = 1
+    print("Ratio of positive samples; {}".format(np.sum(labels)/train_data.shape[0]))
 
     return labels
 
@@ -66,7 +68,7 @@ if __name__ == '__main__':
     import matplotlib.pyplot as plt
     plt.ion()
     fig, ax = plt.subplots()
-    gan = LSGAN(generator_output_size=2, discriminator_input_size=2, gen_variance_coeff=0, generator_hidden_size=16, discriminator_hidden_size=32)
+    gan = LSGAN(generator_output_size=2, discriminator_input_size=2, gen_variance_coeff=0.001, generator_hidden_size=64, discriminator_hidden_size=128)
     G = gan.Generator
     trajectory, angles = create_target_trajectory()
 
@@ -78,7 +80,7 @@ if __name__ == '__main__':
         circle_center = trajectory[i]; angle = angles[i]
         xs, ys = cirlce_coords(num_mixtures, center=circle_center, rotation=angle)
         target_pts = multimodal_sample(num_samples, xs, ys, num_mixtures)
-        noise = np.random.uniform(-1, 1, size=(num_samples, 2))
+        noise = np.random.uniform(-1, 1, size=(num_noise_samples, 2))
         train_data = np.concatenate((noise, gan_pts), axis=0)
         labels = do_label(target_pts, train_data, eps)
         gan = train_GAN(goals=torch.Tensor(train_data), labels=torch.Tensor(labels), goalGAN=gan)
