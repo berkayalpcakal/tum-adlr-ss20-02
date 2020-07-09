@@ -97,9 +97,9 @@ class Dirs:
     def __init__(self, experiment_name: str, rank=0):
         self.prefix = experiment_name
         this_fpath = os.path.realpath(os.path.join(os.getcwd(), os.path.dirname(__file__)))
-        results = Path(this_fpath)/"../all-results"/experiment_name
-        self.models = str(results/f"ckpts-{rank}")
-        self.tensorboard = str(results/"tensorboard")
+        self.root = Path(this_fpath)/"../all-results"/experiment_name
+        self.models = str(self.root/f"ckpts-{rank}")
+        self.tensorboard = str(self.root/"tensorboard")
 
     @property
     def best_model(self):

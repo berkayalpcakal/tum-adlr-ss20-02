@@ -6,6 +6,7 @@ from typing import Iterable
 import matplotlib.pyplot as plt
 import torch
 import numpy as np
+from more_itertools import consume
 
 from multi_goal.GenerativeGoalLearning import trajectory
 from multi_goal.agents import HERSACAgent
@@ -89,4 +90,4 @@ if __name__ == '__main__':
     #     ax.plot(*wall.T, c="red")
     #     ax.scatter(*starting_pos, c="orange")
 
-    train_arc(D=D, gaussian_pi=gaussian_pi, phi=phi)
+    consume(train_arc(D=D, gaussian_pi=gaussian_pi, phi=phi))

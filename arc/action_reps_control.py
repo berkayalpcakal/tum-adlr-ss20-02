@@ -1,10 +1,13 @@
 import os
 import random
+from itertools import count
+from pathlib import Path
 from typing import Sequence, Callable, List, Mapping, Optional
 
 import gym
 import numpy as np
 import torch
+from runstats import Statistics
 from stable_baselines.common.buffers import ReplayBuffer
 from stable_baselines.common.callbacks import BaseCallback
 from stable_baselines.her import HERGoalEnvWrapper
@@ -14,12 +17,12 @@ import torch.nn as nn
 from torch.distributions import Distribution, MultivariateNormal as MVNormal
 from torch.distributions.kl import kl_divergence as KL
 from torch.optim import AdamW
+from torch.utils.tensorboard import SummaryWriter
 
-from multi_goal.GenerativeGoalLearning import Agent, trajectory
+from multi_goal.GenerativeGoalLearning import Agent
 from multi_goal.agents import HERSACAgent
 from multi_goal.envs import Observation, ISettableGoalEnv, GoalHashable
 from multi_goal.envs.toy_labyrinth_env import ToyLab
-from multi_goal.utils import print_message
 
 ObservationSeq = Sequence[Observation]
 GaussianPolicy = Callable[[ObservationSeq], List[Distribution]]
@@ -171,11 +174,14 @@ class ARCTrainingAgent(Agent):
         self._env = env
         self._phi = ActionableRep(input_size=env.observation_space["desired_goal"].shape[0], seed=rank)
         arc_env = ARCEnvWrapper(env=env, phi=self._phi)
-        self._agent = HERSACAgent(env=arc_env, rank=rank, experiment_name="her-sac-arc", verbose=verbose)
+        self._agent = HERSACAgent(env=arc_env, rank=rank, experiment_name="arc-her-sac", verbose=verbose)
         self._gaussian_pi = get_gaussian_pi(agent=self._agent, env=arc_env)
         self._replay_buffer: ReplayBuffer = self._agent._model.model.replay_buffer
-        self._train_arc_callback = TrainARCCallback(function_to_call=self._train_arc)
+        self._train_arc_callback = TrainARCCallback(train_fn=self._train_arc)
         self._rank = rank
+        self._arc_tb_logger = SummaryWriter(log_dir=str(Path(self._agent._dirs.tensorboard)/"ARC"), )
+        self._arc_step = count()
+        self._dact_stats = Statistics([1.0])
 
     def __call__(self, obs: Observation) -> np.ndarray:
         return self._agent(obs)
@@ -185,28 +191,33 @@ class ARCTrainingAgent(Agent):
         torch.save(self._phi.state_dict(), f"arc-{self._rank}.pt")
 
     def _sample_transitions(self) -> ObservationSeq:
-        num_samples = 250
+        num_samples = 100
         obss = self._replay_buffer.sample(num_samples)[0]
         obss = (self._agent._model.env.convert_obs_to_dict(o) for o in obss)
         return [Observation(**o) for o in obss]
 
-    def _train_arc(self) -> None:
+    def _train_arc(self, current_step: int) -> None:
         dataset = self._sample_transitions()
-        train_arc(D=dataset, gaussian_pi=self._gaussian_pi, phi=self._phi, num_epochs=1)
+        self._arc_tb_logger.add_scalar("ARC/Mean Dact", self._dact_stats.mean(), global_step=current_step)
+        loop = train_arc(D=dataset, gaussian_pi=self._gaussian_pi, phi=self._phi, num_epochs=1, dact_stats=self._dact_stats)
+        for loss, dact in loop:
+            step = next(self._arc_step)
+            self._arc_tb_logger.add_scalar("Loss/train", loss, global_step=step)
+            self._arc_tb_logger.add_scalar("ARC/Dact Sample", dact, global_step=step)
 
 
 class TrainARCCallback(BaseCallback):
-    def __init__(self, function_to_call: Callable):
+    def __init__(self, train_fn: Callable[[int], None]):
         super().__init__()
-        self._function_to_call = function_to_call
+        self._train_fn = train_fn
 
     def _on_step(self) -> bool:
-        if self.num_timesteps != 0 and self.num_timesteps % 1000 == 0:
-            self._function_to_call()
+        if self.num_timesteps != 0 and self.num_timesteps % 500 == 0:
+            self._train_fn(self.num_timesteps)
         return True
 
 
-def avg_Dact(dataset: ObservationSeq, pi: GaussianPolicy, samples=50):
+def calc_avg_Dact(dataset: ObservationSeq, pi: GaussianPolicy, samples=50):
     def sample():
         o1, o2 = random.sample(dataset, 2)
         return Dact(o1.desired_goal, o2.desired_goal, dataset, pi=pi)
@@ -214,13 +225,11 @@ def avg_Dact(dataset: ObservationSeq, pi: GaussianPolicy, samples=50):
     return np.array([sample() for _ in range(samples)]).mean()
 
 
-@print_message("Training ARC Representation...")
 def train_arc(D: ObservationSeq, gaussian_pi: GaussianPolicy, phi: ActionableRep,
-              num_epochs=10, fname="arc.pt"):
+              num_epochs=10, dact_stats: Statistics = None):
     optimizer = AdamW(phi.parameters(), lr=1e-3)
     loss_fn = nn.MSELoss()
-
-    avg = avg_Dact(dataset=D, pi=gaussian_pi)
+    dact_stats = Statistics([1]) if dact_stats is None else dact_stats
     epoch_len = len(D)
     for epoch in range(1, num_epochs+1):
         losses = []
@@ -229,12 +238,15 @@ def train_arc(D: ObservationSeq, gaussian_pi: GaussianPolicy, phi: ActionableRep
             s1, s2 = Tensor(obs1.achieved_goal), Tensor(obs2.achieved_goal)
 
             optimizer.zero_grad()
-            loss = loss_fn(torch.dist(phi(s1), phi(s2)), Dact(s1, s2, D, pi=gaussian_pi)/avg)
+            dact = Dact(s1, s2, D, pi=gaussian_pi)
+            loss = loss_fn(torch.dist(phi(s1), phi(s2)), dact / dact_stats.mean())
             loss.backward()
             optimizer.step()
-            losses.append(float(loss))
-        if epoch % 10 == 0:
-            torch.save(phi.state_dict(), fname)
+
+            loss = float(loss)
+            losses.append(loss)
+            dact_stats.push(float(dact))
+            yield loss, float(dact)
         print(f"Epoch finished: {epoch}, loss: {np.mean(losses):.3f}", flush=True)
 
 
