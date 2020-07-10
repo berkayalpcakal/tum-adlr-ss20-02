@@ -23,6 +23,7 @@ from multi_goal.GenerativeGoalLearning import Agent
 from multi_goal.agents import HERSACAgent
 from multi_goal.envs import Observation, ISettableGoalEnv, GoalHashable
 from multi_goal.envs.toy_labyrinth_env import ToyLab
+from multi_goal.utils import latest_model, print_message
 
 ObservationSeq = Sequence[Observation]
 GaussianPolicy = Callable[[ObservationSeq], List[Distribution]]
@@ -150,10 +151,10 @@ class ARCEnvWrapper(ISettableGoalEnv):
     def step(self, action):
         obs: Observation
         obs, r, done, info = self._delegate.step(action=action)
-        obs = self._enrich_obs(obs)
+        obs = self.enrich_obs(obs)
         return obs, r, done, info
 
-    def _enrich_obs(self, obs: Observation) -> Observation:
+    def enrich_obs(self, obs: Observation) -> Observation:
         rep = self._phi(Tensor([obs.achieved_goal, obs.desired_goal])).detach().numpy()
         new_obs = np.concatenate((obs.observation, *rep))
         return Observation(observation=new_obs, achieved_goal=obs.achieved_goal, desired_goal=obs.desired_goal)
@@ -163,7 +164,7 @@ class ARCEnvWrapper(ISettableGoalEnv):
 
     def reset(self) -> Observation:
         obs = self._delegate.reset()
-        return self._enrich_obs(obs)
+        return self.enrich_obs(obs)
 
     def seed(self, seed=None):
         self._delegate.seed(seed)
@@ -173,21 +174,30 @@ class ARCTrainingAgent(Agent):
     def __init__(self, env: ISettableGoalEnv, rank=0, verbose=1):
         self._env = env
         self._phi = ActionableRep(input_size=env.observation_space["desired_goal"].shape[0], seed=rank)
-        arc_env = ARCEnvWrapper(env=env, phi=self._phi)
-        self._agent = HERSACAgent(env=arc_env, rank=rank, experiment_name="arc-her-sac", verbose=verbose)
-        self._gaussian_pi = get_gaussian_pi(agent=self._agent, env=arc_env)
+        self._arc_env = ARCEnvWrapper(env=env, phi=self._phi)
+        self._agent = HERSACAgent(env=self._arc_env, rank=rank, experiment_name="arc-her-sac", verbose=verbose)
+        self._load_arc_params_if_existent()
+        self._gaussian_pi = get_gaussian_pi(agent=self._agent, env=self._arc_env)
         self._replay_buffer: ReplayBuffer = self._agent._model.model.replay_buffer
-        self._train_arc_callback = TrainARCCallback(train_fn=self._train_arc)
         self._rank = rank
         self._arc_tb_logger = SummaryWriter(log_dir=str(Path(self._agent._dirs.tensorboard)/f"ARC_{rank}"), )
         self._arc_step = count()
         self._dact_stats = Statistics([1.0])
 
+    def _load_arc_params_if_existent(self):
+        self._arc_model_dir = str(Path(self._agent._dirs.root)/"arc-ckpt")
+        if os.path.isdir(self._arc_model_dir):
+            latest_model_fname = str(Path(self._arc_model_dir)/latest_model(self._arc_model_dir))
+            self._phi.load_state_dict(torch.load(latest_model_fname))
+            print(f"Loaded ARC from {latest_model_fname}")
+
     def __call__(self, obs: Observation) -> np.ndarray:
+        obs = self._arc_env.enrich_obs(obs)
         return self._agent(obs)
 
     def train(self, timesteps: int, eval_env: ISettableGoalEnv = None) -> None:
-        self._agent.train(timesteps=timesteps, callbacks=[self._train_arc_callback], eval_env=eval_env)
+        cb = TrainARCCallback(train_fn=self._train_arc, save_fn=self._save_arc, save_every_n_steps=timesteps//4)
+        self._agent.train(timesteps=timesteps, callbacks=[cb], eval_env=eval_env)
         torch.save(self._phi.state_dict(), f"arc-{self._rank}.pt")
 
     def _sample_transitions(self) -> ObservationSeq:
@@ -196,6 +206,7 @@ class ARCTrainingAgent(Agent):
         obss = (self._agent._model.env.convert_obs_to_dict(o) for o in obss)
         return [Observation(**o) for o in obss]
 
+    @print_message("Training ARC...")
     def _train_arc(self, current_step: int) -> None:
         dataset = self._sample_transitions()
         self._arc_tb_logger.add_scalar("ARC/Mean Dact", self._dact_stats.mean(), global_step=current_step)
@@ -205,15 +216,28 @@ class ARCTrainingAgent(Agent):
             self._arc_tb_logger.add_scalar("Loss/train", loss, global_step=step)
             self._arc_tb_logger.add_scalar("ARC/Dact Sample", dact, global_step=step)
 
+    def _save_arc(self, current_step: int):
+        model_fname = str(Path(self._arc_model_dir, f"arc-{current_step}-steps.pt"))
+        if not os.path.isdir(self._arc_model_dir):
+            os.mkdir(self._arc_model_dir)
+        torch.save(self._phi.state_dict(), model_fname)
+
 
 class TrainARCCallback(BaseCallback):
-    def __init__(self, train_fn: Callable[[int], None]):
+    def __init__(self, train_fn: Callable[[int], None], save_fn: Callable,
+                 save_every_n_steps: int):
         super().__init__()
         self._train_fn = train_fn
+        self._save_fn = save_fn
+        self._save_every_n_steps = save_every_n_steps
 
     def _on_step(self) -> bool:
-        if self.num_timesteps != 0 and self.num_timesteps % 500 == 0:
+        if self.num_timesteps != 0 and self.num_timesteps % 1000 == 0:
             self._train_fn(self.num_timesteps)
+
+        if self.num_timesteps != 0 and self.num_timesteps % self._save_every_n_steps == 0:
+            self._save_fn(self.num_timesteps)
+
         return True
 
 
@@ -247,7 +271,6 @@ def train_arc(D: ObservationSeq, gaussian_pi: GaussianPolicy, phi: ActionableRep
             losses.append(loss)
             dact_stats.push(float(dact))
             yield loss, float(dact)
-        print(f"Epoch finished: {epoch}, loss: {np.mean(losses):.3f}", flush=True)
 
 
 if __name__ == '__main__':
