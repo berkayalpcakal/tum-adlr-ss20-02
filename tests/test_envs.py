@@ -200,10 +200,6 @@ def test_env_trajectory(env_fn):
 @pytest.mark.parametrize("env_fn", env_fns)
 def test_random_goals_cover_space(env_fn):
     env = env_fn(seed=0)
-    null_step = np.zeros(shape=env.action_space.shape)
-    instantiation_goals = np.array([env_fn(seed=i).step(null_step)[0].desired_goal for i in range(100)])
-    assert cover_space(instantiation_goals)
-
     reset_goals = np.array([env.reset().desired_goal for _ in range(100)])
     assert cover_space(reset_goals)
 
