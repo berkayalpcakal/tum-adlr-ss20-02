@@ -25,6 +25,8 @@ from multi_goal.envs import Observation, ISettableGoalEnv, GoalHashable
 from multi_goal.envs.toy_labyrinth_env import ToyLab
 from multi_goal.utils import latest_model, print_message
 
+torch.set_num_threads(2)
+
 ObservationSeq = Sequence[Observation]
 GaussianPolicy = Callable[[ObservationSeq], List[Distribution]]
 
