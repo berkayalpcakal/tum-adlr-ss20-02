@@ -7,20 +7,21 @@ import numpy as np
 from stable_baselines.common.callbacks import CheckpointCallback, BaseCallback, CallbackList
 from stable_baselines.common.vec_env import DummyVecEnv
 from stable_baselines.her import HERGoalEnvWrapper
+from torchsummary import summary
 
 from multi_goal.utils import Dirs
 
 with warnings.catch_warnings():
     warnings.simplefilter(action="ignore", category=FutureWarning)
     from stable_baselines import PPO2, HER, SAC
-from multi_goal.GenerativeGoalLearning import Agent, evaluate
+from multi_goal.GenerativeGoalLearning import Agent, evaluate, train_goalGAN, initialize_GAN
 from multi_goal.envs import Observation, ISettableGoalEnv
 
 
 class PPOAgent(Agent):
     def __init__(self, env: ISettableGoalEnv, verbose=0, experiment_name="ppo", rank=0):
         self._env = env
-        self._dirs = Dirs(experiment_name=f"{type(env).__name__}-{experiment_name}-{rank}")
+        self._dirs = Dirs(experiment_name=f"{type(env).__name__}-{experiment_name}", rank=rank)
         self._flat_env = HERGoalEnvWrapper(env)
         options = {"env": DummyVecEnv([lambda: self._flat_env]), "tensorboard_log": self._dirs.tensorboard,
                    "gamma": 1, "seed": rank, "nminibatches": 1}
@@ -88,3 +89,19 @@ class EvaluateCallback(BaseCallback):
             evaluate(agent=self._agent, env=self._settable_goal_env)
             self._last_eval = datetime.now()
         return True
+
+
+class GoalGANAgent(Agent):
+    def __init__(self, env: ISettableGoalEnv, agent: Agent):
+        self._agent = agent
+        self._gan = initialize_GAN(env=env)
+        self._env = env
+        summary(self._gan.Generator,     input_size=(1, 1, 4), device='cpu')
+        summary(self._gan.Discriminator, input_size=(1, 1, 2), device='cpu')
+
+    def __call__(self, obs: Observation) -> np.ndarray:
+        return self._agent(obs)
+
+    def train(self, timesteps: int) -> None:
+        train_goalGAN(π=self._agent, goalGAN=self._gan, env=self._env,
+                      eval_env=None, timesteps=timesteps)

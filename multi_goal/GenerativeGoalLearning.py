@@ -1,4 +1,5 @@
 import time
+import warnings
 from itertools import count
 from typing import Sequence, Tuple
 
@@ -10,7 +11,7 @@ from torch import Tensor
 
 from multi_goal.envs import Observation, ISettableGoalEnv, dim_goal
 from multi_goal.LSGAN import LSGAN
-from multi_goal.utils import print_message
+from multi_goal.utils import print_message, display_goals
 
 #### PARAMETERS ####
 Rmin = 0.1
@@ -62,10 +63,11 @@ def initialize_GAN(env: gym.GoalEnv) -> LSGAN:
 
 
 @print_message("Training the policy on current goals")
-def update_and_eval_policy(goals: Tensor, π: Agent, env: ISettableGoalEnv, eval_env: ISettableGoalEnv) -> Tuple[Agent, Returns]:
+def update_and_eval_policy(goals: Tensor, π: Agent, env: ISettableGoalEnv, eval_env: ISettableGoalEnv,
+                           timesteps: int) -> Tuple[Agent, Returns]:
     env.set_possible_goals(goals.numpy())
     env.reset()
-    π.train(timesteps=env.max_episode_len*len(goals)*3, num_checkpoints=1, eval_env=eval_env)
+    π.train(timesteps=timesteps, num_checkpoints=1, eval_env=eval_env)
     episode_successes_per_goal = env.get_successes_of_goals()
     assert all(len(sucs) > 0 for g, sucs in episode_successes_per_goal.items()),\
         "More steps are necessary to eval each goal at least once."
@@ -174,3 +176,58 @@ def evaluate(agent: Agent, env: ISettableGoalEnv, very_granular=False):
     env.set_possible_goals(goals=None, entire_space=True)
     env.render(other_positions={"red": not_reached, "green": reached},
                show_agent_and_goal_pos=False)
+
+
+def train_goalGAN(π: Agent, goalGAN: LSGAN, env: ISettableGoalEnv, eval_env: ISettableGoalEnv, timesteps: int):
+    """
+    Algorithm in the GAN paper, Florensa 2018
+
+    for i in iterations:
+        z         = sample_noise()                     # input for goal generator network
+        goals     = G(z) union goals_old               # concat old goals with the generated ones
+        π         = update_policy(goals, π)            # perform policy update, paper uses TRPO, Leon suggested to use PPO as it is simpler
+        returns   = evaluate_policy(goals, π)          # needed to label the goals
+        labels    = label_goals(goals)                 # needed to train discriminator network
+        G, D      = train_GAN(goals, labels, G, D)
+        goals_old = goals
+
+    """
+
+    #### PARAMETERS ####
+    initial_iterations  = 5
+    num_gan_goals       = 60
+    num_old_goals       = num_gan_goals // 2
+    num_rand_goals      = num_gan_goals // 2
+    ####################
+
+    timesteps_per_iteration = 3*env.max_episode_len*(num_gan_goals + num_old_goals + num_rand_goals)
+    iterations = (timesteps // timesteps_per_iteration) + 1
+    log_iter = lambda it_num: print(f"\n### BEGIN ITERATION {it_num}, TIMESTEP {it_num*timesteps_per_iteration} ###")
+
+    # Initial training of the policy with random goals
+    for iter_num in range(initial_iterations):
+        log_iter(iter_num)
+        rand_goals = torch.Tensor(num_rand_goals, dim_goal(env)).uniform_(-1, 0)
+        π, returns = update_and_eval_policy(rand_goals, π, env, eval_env, timesteps=timesteps_per_iteration)
+        print(f"Average reward: {(sum(returns) / len(returns)):.2f}")
+        labels     = label_goals(returns)
+        display_goals(rand_goals.detach().numpy(), returns, iter_num, env, fileNamePrefix='_')
+        goalGAN    = train_GAN(rand_goals, labels, goalGAN)
+
+    close_to_starting_pos = torch.Tensor([env.starting_agent_pos]) + 0.1*torch.randn(num_old_goals, dim_goal(env))
+    goals_old = torch.clamp(close_to_starting_pos, min=-1, max=1)
+
+    for iter_num in range(initial_iterations, iterations):
+        log_iter(iter_num)
+        z             = torch.randn(size=(num_gan_goals, goalGAN.Generator.noise_size))
+        raw_gan_goals = goalGAN.Generator.forward(z).detach()
+        gan_goals     = torch.clamp(raw_gan_goals + 0.1*torch.randn(num_gan_goals, dim_goal(env)), min=-1, max=1)
+        rand_goals    = torch.Tensor(num_rand_goals, dim_goal(env)).uniform_(-1, 1)
+        all_goals     = torch.cat([gan_goals, sample(goals_old, k=num_old_goals), rand_goals])
+        π, returns    = update_and_eval_policy(all_goals, π, env, eval_env, timesteps=timesteps_per_iteration)
+        display_goals(all_goals.detach().numpy(), returns, iter_num, env, gan_goals=raw_gan_goals.numpy())
+        print(f"Average reward: {(sum(returns) / len(returns)):.2f}")
+        labels        = label_goals(returns)
+        if all([lab == 0 for lab in labels]): warnings.warn("All labels are 0")
+        goalGAN       = train_GAN(all_goals, labels, goalGAN)
+        goals_old     = update_replay(gan_goals, goals_old=goals_old)
