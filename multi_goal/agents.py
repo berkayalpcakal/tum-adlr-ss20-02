@@ -61,8 +61,7 @@ class HERSACAgent(Agent):
         return action
 
     def train(self, timesteps: int, eval_env: ISettableGoalEnv = None,
-              callbacks: Sequence[BaseCallback] = None) -> None:
-        num_checkpoints = 4
+              callbacks: Sequence[BaseCallback] = None, num_checkpoints=4) -> None:
         env = self._env if eval_env is None else eval_env
         callbacks = [] if callbacks is None else callbacks
         cb = CallbackList([*make_callbacks(timesteps, num_checkpoints, self._dirs, self, env), *callbacks])
