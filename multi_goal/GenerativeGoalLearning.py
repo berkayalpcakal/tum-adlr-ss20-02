@@ -1,4 +1,3 @@
-import collections
 import time
 from itertools import count
 from typing import Sequence, Tuple
@@ -6,6 +5,7 @@ from typing import Sequence, Tuple
 import gym
 import numpy as np
 import torch
+from more_itertools import consume
 from torch import Tensor
 
 from multi_goal.envs import Observation, ISettableGoalEnv, dim_goal
@@ -174,7 +174,3 @@ def evaluate(agent: Agent, env: ISettableGoalEnv, very_granular=False):
     env.set_possible_goals(goals=None, entire_space=True)
     env.render(other_positions={"red": not_reached, "green": reached},
                show_agent_and_goal_pos=False)
-
-
-def consume(iterator):
-    collections.deque(iterator, maxlen=0)
