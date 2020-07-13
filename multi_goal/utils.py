@@ -19,7 +19,7 @@ def print_message(msg: str):
             print(msg, end=" ", flush=True)
             res = func(*args, **kwargs)
             duration = time.time() - start
-            print(f"DONE. TIME: {duration:.2f} [s]")
+            print(f"DONE. TIME: {duration:.2f} [s]", flush=True)
             return res
         return printer
     return decorator

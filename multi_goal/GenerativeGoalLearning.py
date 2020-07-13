@@ -1,7 +1,7 @@
 import time
 import warnings
 from itertools import count
-from typing import Sequence, Tuple
+from typing import Sequence, Tuple, Iterator
 
 import gym
 import numpy as np
@@ -62,16 +62,19 @@ def initialize_GAN(env: gym.GoalEnv) -> LSGAN:
     return goalGAN
 
 
-@print_message("Training the policy on current goals")
-def update_and_eval_policy(goals: Tensor, π: Agent, env: ISettableGoalEnv, eval_env: ISettableGoalEnv,
-                           timesteps: int) -> Tuple[Agent, Returns]:
+def update_and_eval_policy(goals: Tensor, π: Agent, env: ISettableGoalEnv, eval_env: ISettableGoalEnv) -> Tuple[Agent, Returns]:
     env.set_possible_goals(goals.numpy())
     env.reset()
-    π.train(timesteps=timesteps, num_checkpoints=1, eval_env=eval_env)
-    episode_successes_per_goal = env.get_successes_of_goals()
-    assert all(len(sucs) > 0 for g, sucs in episode_successes_per_goal.items()),\
-        "More steps are necessary to eval each goal at least once."
-    
+
+    print("Training the policy on current goals...", end=" ", flush=True)
+    start = time.time()
+    while True:
+        episode_successes_per_goal = env.get_successes_of_goals()
+        if all(len(sucs) >= 3 for g, sucs in episode_successes_per_goal.items()):
+            print(f"DONE. TIME: {(time.time() - start):.2f} [s]", flush=True)
+            break
+        yield
+
     returns = [np.mean(episode_successes_per_goal[tuple(g)]) for g in goals.numpy()]
     return π, returns
 
@@ -178,7 +181,7 @@ def evaluate(agent: Agent, env: ISettableGoalEnv, very_granular=False):
                show_agent_and_goal_pos=False)
 
 
-def train_goalGAN(π: Agent, goalGAN: LSGAN, env: ISettableGoalEnv, eval_env: ISettableGoalEnv, timesteps: int):
+def train_goalGAN(π: Agent, goalGAN: LSGAN, env: ISettableGoalEnv, eval_env: ISettableGoalEnv) -> Iterator[None]:
     """
     Algorithm in the GAN paper, Florensa 2018
 
@@ -200,15 +203,13 @@ def train_goalGAN(π: Agent, goalGAN: LSGAN, env: ISettableGoalEnv, eval_env: IS
     num_rand_goals      = num_gan_goals // 2
     ####################
 
-    timesteps_per_iteration = 3*env.max_episode_len*(num_gan_goals + num_old_goals + num_rand_goals)
-    iterations = (timesteps // timesteps_per_iteration) + 1
-    log_iter = lambda it_num: print(f"\n### BEGIN ITERATION {it_num}, TIMESTEP {it_num*timesteps_per_iteration} ###")
+    log_iter = lambda it_num: print(f"\n### BEGIN ITERATION {it_num} ###")
 
     # Initial training of the policy with random goals
     for iter_num in range(initial_iterations):
         log_iter(iter_num)
         rand_goals = torch.Tensor(num_rand_goals, dim_goal(env)).uniform_(-1, 0)
-        π, returns = update_and_eval_policy(rand_goals, π, env, eval_env, timesteps=timesteps_per_iteration)
+        π, returns = yield from update_and_eval_policy(rand_goals, π, env, eval_env)
         print(f"Average reward: {(sum(returns) / len(returns)):.2f}")
         labels     = label_goals(returns)
         display_goals(rand_goals.detach().numpy(), returns, iter_num, env, fileNamePrefix='_')
@@ -217,14 +218,14 @@ def train_goalGAN(π: Agent, goalGAN: LSGAN, env: ISettableGoalEnv, eval_env: IS
     close_to_starting_pos = torch.Tensor([env.starting_agent_pos]) + 0.1*torch.randn(num_old_goals, dim_goal(env))
     goals_old = torch.clamp(close_to_starting_pos, min=-1, max=1)
 
-    for iter_num in range(initial_iterations, iterations):
+    for iter_num in count(initial_iterations):
         log_iter(iter_num)
         z             = torch.randn(size=(num_gan_goals, goalGAN.Generator.noise_size))
         raw_gan_goals = goalGAN.Generator.forward(z).detach()
-        gan_goals     = torch.clamp(raw_gan_goals + 0.1*torch.randn(num_gan_goals, dim_goal(env)), min=-1, max=1)
+        gan_goals     = torch.clamp(raw_gan_goals + 0.2*torch.randn(num_gan_goals, dim_goal(env)), min=-1, max=1)
         rand_goals    = torch.Tensor(num_rand_goals, dim_goal(env)).uniform_(-1, 1)
         all_goals     = torch.cat([gan_goals, sample(goals_old, k=num_old_goals), rand_goals])
-        π, returns    = update_and_eval_policy(all_goals, π, env, eval_env, timesteps=timesteps_per_iteration)
+        π, returns    = yield from update_and_eval_policy(all_goals, π, env, eval_env)
         display_goals(all_goals.detach().numpy(), returns, iter_num, env, gan_goals=raw_gan_goals.numpy())
         print(f"Average reward: {(sum(returns) / len(returns)):.2f}")
         labels        = label_goals(returns)

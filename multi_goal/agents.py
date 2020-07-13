@@ -1,7 +1,7 @@
 import os
 import warnings
 from datetime import datetime
-from typing import List, Sequence
+from typing import List, Sequence, Callable
 
 import numpy as np
 from stable_baselines.common.callbacks import CheckpointCallback, BaseCallback, CallbackList
@@ -19,7 +19,7 @@ from multi_goal.envs import Observation, ISettableGoalEnv
 
 
 class PPOAgent(Agent):
-    def __init__(self, env: ISettableGoalEnv, verbose=0, experiment_name="ppo", rank=0):
+    def __init__(self, env: ISettableGoalEnv, verbose=1, experiment_name="ppo", rank=0):
         self._env = env
         self._dirs = Dirs(experiment_name=f"{type(env).__name__}-{experiment_name}", rank=rank)
         self._flat_env = HERGoalEnvWrapper(env)
@@ -36,12 +36,13 @@ class PPOAgent(Agent):
         action, _ = self._model.predict(flat_obs, deterministic=True)
         return action
 
-    def train(self, timesteps: int, num_checkpoints=4, eval_env: ISettableGoalEnv = None):
+    def train(self, timesteps: int, num_checkpoints=4, eval_env: ISettableGoalEnv = None,
+              callbacks: Sequence[BaseCallback] = None):
         ppo_offset = 128
         env = self._env if eval_env is None else eval_env
-        cb = CallbackList(make_callbacks(timesteps=timesteps, num_checkpoints=num_checkpoints,
-                                         dirs=self._dirs, agent=self, env=env))
-        self._model.learn(total_timesteps=timesteps+ppo_offset, callback=cb)
+        callbacks = [] if callbacks is None else callbacks
+        cb = CallbackList([*make_callbacks(timesteps, num_checkpoints, self._dirs, self, env), *callbacks])
+        self._model.learn(total_timesteps=timesteps+ppo_offset, callback=cb, log_interval=100)
 
 
 class HERSACAgent(Agent):
@@ -102,5 +103,15 @@ class GoalGANAgent(Agent):
         return self._agent(obs)
 
     def train(self, timesteps: int) -> None:
-        train_goalGAN(π=self._agent, goalGAN=self._gan, env=self._env,
-                      eval_env=None, timesteps=timesteps)
+        loop = train_goalGAN(π=self._agent, goalGAN=self._gan, env=self._env, eval_env=None)
+        cb = AnyFunctionTrainingCallback(callback=lambda: next(loop))
+        self._agent.train(timesteps=timesteps, callbacks=[cb])
+
+
+class AnyFunctionTrainingCallback(BaseCallback):
+    def __init__(self, callback: Callable[[], None]):
+        super().__init__()
+        self._callback = callback
+
+    def _on_rollout_start(self) -> None:
+        self._callback()
