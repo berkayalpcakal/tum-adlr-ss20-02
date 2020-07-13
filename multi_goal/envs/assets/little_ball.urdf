@@ -18,5 +18,13 @@
 	       <sphere radius="0.3"/>
       </geometry>
     </collision>
+    <visual>
+      <geometry>
+        <sphere radius="0.3"/>
+       </geometry>
+       <material name="transparent_green">
+         <color rgba="1 0 0 1"/>
+         </material>
+     </visual>
   </link>
 </robot>
