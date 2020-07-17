@@ -168,12 +168,13 @@ def trajectory(pi: Agent, env: ISettableGoalEnv, goal: np.ndarray = None,
 
 @print_message("Evaluating agent in env...")
 def evaluate(agent: Agent, env: ISettableGoalEnv, very_granular=False):
-    coarseness = complex(0, 30 if very_granular else 10)
+    coarseness = complex(0, 30 if very_granular else 6)
     goals = np.mgrid[-1:1:coarseness, -1:1:coarseness].reshape((2, -1)).T
     env.seed(0)
     env.set_possible_goals(goals)
-    for _ in goals:
+    for idx, _ in enumerate(goals):
         consume(trajectory(agent, env))
+        print(f"done evaluation goal #{idx}", flush=True)
     reached = np.array([goal for goal, successes in env.get_successes_of_goals().items() if successes[0]])
     not_reached = np.array([goal for goal, successes in env.get_successes_of_goals().items() if not successes[0]])
     env.set_possible_goals(goals=None, entire_space=True)
