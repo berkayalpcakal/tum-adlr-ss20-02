@@ -1,8 +1,9 @@
 import os
 import time
 from itertools import count
-from typing import Sequence
+from typing import Sequence, Optional
 
+import gym
 import numpy as np
 import pybullet
 import pybullet_data
@@ -10,6 +11,7 @@ import pybullet_data
 from pybullet_utils.bullet_client import BulletClient
 
 from multi_goal.envs import Simulator, SettableGoalEnv, normalizer, SimObs
+from multi_goal.envs.pybullet_imgs import get_labyrinth_cam_settings
 
 
 class Labyrinth(SettableGoalEnv):
@@ -37,6 +39,7 @@ class SimpleLabyrinthConfig:
     agent_initial_pos = np.array([0, 0, ball_radius])
     goal_initial_pos = [2, 0, ball_radius]
     arrow_initial_pos = [*agent_initial_pos[:2], 2*ball_radius]
+    getCamSettings = staticmethod(get_labyrinth_cam_settings)
 
 
 class HardLabyrinthConfig(SimpleLabyrinthConfig):
@@ -54,8 +57,6 @@ class HardLabyrinthConfig(SimpleLabyrinthConfig):
 
 class PyBullet(Simulator):
     action_dim = 2
-    goal_dim = 2
-    obs_dim = 2
     _viz_lock_taken = False
     __filelocation__ = os.path.realpath(os.path.join(os.getcwd(), os.path.dirname(__file__)))
     _red_ball_fname = os.path.join(__filelocation__, 'assets/little_ball.urdf')
@@ -63,6 +64,11 @@ class PyBullet(Simulator):
     _arrow_fname = os.path.join(__filelocation__, "assets/arrow.urdf")
 
     def __init__(self, visualize=False, labyrinth=SimpleLabyrinthConfig()):
+        self.observation_space = gym.spaces.Dict(spaces={
+            "observation": gym.spaces.Box(low=-np.inf, high=np.inf, shape=(2, )),
+            "desired_goal": gym.spaces.Box(low=-1, high=1, shape=(2, )),
+            "achieved_goal": gym.spaces.Box(low=-1, high=1, shape=(2, ))
+        })
         self._visualize = visualize
         if visualize:
             assert not self._viz_lock_taken, "only one PyBullet simulation can be visualized simultaneously"
@@ -81,6 +87,8 @@ class PyBullet(Simulator):
         self._ball_radius = labyrinth.ball_radius
         self._norm, self._denorm = normalizer(labyrinth.lower_bound, labyrinth.upper_bound)
         self.normed_starting_agent_obs = self._norm(labyrinth.agent_initial_pos[:2])
+        self._cam_settings = labyrinth.getCamSettings(self._bullet)
+        self._goal_img = None
 
     def step(self, action: np.ndarray) -> SimObs:
         sim_step_per_sec = 240
@@ -97,7 +105,11 @@ class PyBullet(Simulator):
         self._bullet.stepSimulation()
         agent_pos = self._get_agent_pos()
         agent_vel = 30*(agent_pos - prev_agent_pos)  # goal is to output a max vel of ~1
-        return SimObs(agent_pos=self._norm(agent_pos), obs=agent_vel)
+        rgb_img = self._get_cam_img()
+        return SimObs(agent_pos=self._norm(agent_pos), obs=agent_vel, image=rgb_img)
+
+    def _get_cam_img(self) -> np.ndarray:
+        return self._bullet.getCameraImage(**self._cam_settings)[2]
 
     def _get_agent_pos(self) -> np.ndarray:
         return _position(self._bullet.getBasePositionAndOrientation(self._agent_ball))
@@ -113,9 +125,17 @@ class PyBullet(Simulator):
         pos = self._denorm(pos)
         _reset_object(self._bullet, self._agent_ball, pos=[*pos, self._ball_radius])
 
-    def set_goal_pos(self, pos: np.ndarray) -> None:
+    def set_goal_pos(self, pos: np.ndarray) -> Optional[np.ndarray]:
         pos = self._denorm(pos)
         _reset_object(self._bullet, self._goal_ball, pos=[*pos, self._ball_radius])
+        return self._mk_goal_img(goal_pos=pos)
+
+    def _mk_goal_img(self, goal_pos) -> np.ndarray:
+        agent_pos_backup = self._get_agent_pos()
+        _reset_object(self._bullet, self._agent_ball, pos=[*goal_pos, self._ball_radius])
+        img = self._get_cam_img()
+        _reset_object(self._bullet, self._agent_ball, pos=[*agent_pos_backup, self._ball_radius])
+        return img
 
     def is_success(self, achieved: np.ndarray, desired: np.ndarray) -> bool:
         achieved, desired = self._denorm(achieved), self._denorm(desired)

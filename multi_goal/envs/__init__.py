@@ -62,13 +62,14 @@ def normalizer(low, high):
     return normalize, denormalize
 
 
-SimObs = NamedTuple("State", fields=[("agent_pos", np.ndarray), ("obs", np.ndarray)])
+SimObs = NamedTuple("State", fields=[("agent_pos", np.ndarray),
+                                     ("obs", np.ndarray),
+                                     ("image", Optional[np.ndarray])])
 
 
 class Simulator:
+    observation_space: gym.spaces.Dict
     action_dim: int
-    goal_dim: int
-    obs_dim: int
     normed_starting_agent_obs: np.ndarray
 
     def step(self, action: np.ndarray) -> SimObs:
@@ -90,13 +91,11 @@ class Simulator:
 class SettableGoalEnv(ISettableGoalEnv):
     reward_range = (-1, 0)
 
-    def __init__(self, sim: Simulator, max_episode_len: int, seed=0, use_random_starting_pos=False):
+    def __init__(self, sim: Simulator, max_episode_len: int,
+                 seed=0, use_random_starting_pos=False, obs_as_img=False):
         super().__init__()
-        self.observation_space = gym.spaces.Dict(spaces={
-            "observation": gym.spaces.Box(low=0, high=0, shape=(sim.obs_dim,)),
-            "achieved_goal": gym.spaces.Box(low=-1, high=1, shape=(sim.goal_dim,)),
-            "desired_goal": gym.spaces.Box(low=-1, high=1, shape=(sim.goal_dim,))
-        })
+        self._obs_as_img = obs_as_img
+        self.observation_space = sim.observation_space
         self.action_space = gym.spaces.Box(low=-1, high=1, shape=(sim.action_dim,))
         self.seed(seed)
         self.starting_agent_pos = sim.normed_starting_agent_obs
@@ -106,7 +105,9 @@ class SettableGoalEnv(ISettableGoalEnv):
         self._successes_per_goal: Mapping[GoalHashable, List[bool]] = dict()
         self._use_random_starting_pos = use_random_starting_pos
         self._agent_pos = None
+        self._achieved_img = None
         self._goal_pos = None
+        self._desired_img = None
         self._cur_obs = None
         self._step_num = 0
         self.reset()
@@ -125,7 +126,7 @@ class SettableGoalEnv(ISettableGoalEnv):
         action = np.array(action)
         assert self.action_space.contains(action*0.99), f"Action is not within 1% bounds: {action}"
         self._step_num += 1
-        self._agent_pos, self._cur_obs = self._sim.step(action=action)
+        self._agent_pos, self._cur_obs, self._achieved_img = self._sim.step(action=action)
         obs = self._make_obs_object()
         reward = self.compute_reward(obs.achieved_goal, obs.desired_goal, {})
         is_success = reward == max(self.reward_range)
@@ -149,13 +150,17 @@ class SettableGoalEnv(ISettableGoalEnv):
         self._sim.set_agent_pos(self._agent_pos)
 
         self._goal_pos = self._new_goal()
-        self._sim.set_goal_pos(self._goal_pos)
+        self._desired_img = self._sim.set_goal_pos(self._goal_pos)
 
         null_action = np.zeros(shape=self.action_space.shape)
-        self._agent_pos, self._cur_obs = self._sim.step(action=null_action)
+        self._agent_pos, self._cur_obs, img = self._sim.step(action=null_action)
         return self._make_obs_object()
 
     def _make_obs_object(self) -> Observation:
+        if self._obs_as_img:
+            return Observation(observation=np.empty(0),
+                               achieved_goal=self._achieved_img,
+                               desired_goal=self._desired_img)
         return Observation(observation=self._cur_obs,
                            achieved_goal=self._agent_pos,
                            desired_goal=self._goal_pos)

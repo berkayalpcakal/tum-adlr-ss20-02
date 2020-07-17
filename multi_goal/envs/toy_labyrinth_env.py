@@ -1,5 +1,7 @@
 import time
 from typing import Mapping
+
+import gym
 import numpy as np
 
 from multi_goal.envs import normalizer, SettableGoalEnv, Simulator, SimObs
@@ -13,8 +15,6 @@ class ToyLab(SettableGoalEnv):
 
 class ToyLabSimulator(Simulator):
     action_dim = 2
-    goal_dim = 2
-    obs_dim = 0
     normed_starting_agent_obs = np.array([-.75, -.5])
     middle_wall_len = 12
     sidewall_height = 8
@@ -34,13 +34,18 @@ class ToyLabSimulator(Simulator):
     _normalize, _denormalize = staticmethod(_normalize), staticmethod(_denormalize)
 
     def __init__(self):
+        self.observation_space = gym.spaces.Dict(spaces={
+            "observation": gym.spaces.Box(low=0, high=0, shape=(0, )),
+            "desired_goal": gym.spaces.Box(low=-1, high=1, shape=(2, )),
+            "achieved_goal": gym.spaces.Box(low=-1, high=1, shape=(2, ))
+        })
         self.agent_pos = None
         self.goal_pos = None
         self._plot = None
 
     def step(self, action: np.ndarray) -> SimObs:
         self.agent_pos = self.simulation_step(self.agent_pos, action)
-        return SimObs(agent_pos=self._normalize(self.agent_pos), obs=np.empty(0))
+        return SimObs(agent_pos=self._normalize(self.agent_pos), obs=np.empty(0), image=np.empty(0))
 
     _step_len = 0.5
     def simulation_step(self, cur_pos: np.ndarray, action: np.ndarray) -> np.ndarray:
