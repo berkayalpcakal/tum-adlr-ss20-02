@@ -6,6 +6,7 @@ import pytest
 from multi_goal.GenerativeGoalLearning import trajectory, null_agent
 from multi_goal.envs import Observation
 from multi_goal.envs.pybullet_labyrinth_env import Labyrinth, HardLabyrinth
+from multi_goal.envs.pybullet_panda_robot import PandasEnv
 from multi_goal.envs.toy_labyrinth_env import normalizer, ToyLabSimulator, ToyLab
 import numpy as np
 
@@ -28,7 +29,7 @@ def test_are_on_same_side_of_wall():
     assert not c._are_on_same_side_of_wall(below_wall, above_wall)
 
 
-@pytest.fixture(params=[Labyrinth, ToyLab, HardLabyrinth], scope="module")
+@pytest.fixture(params=[Labyrinth, ToyLab, HardLabyrinth, PandasEnv], scope="module")
 def env_fn(request):
     yield request.param
 
@@ -49,8 +50,8 @@ class TestSuiteForEnvs:
         env = env_fn()
         space = env.observation_space["desired_goal"]
         assert env.reward_range == (-1, 0)
-        assert np.allclose(np.ones(space.shape), space.high)
-        assert np.allclose(-np.ones(space.shape), space.low)
+        assert np.allclose(1, space.high[np.isfinite(space.high)])
+        assert np.allclose(-1, space.low[np.isfinite(space.low)])
 
         env.reset()
         low = env.observation_space["achieved_goal"].low
@@ -76,6 +77,8 @@ class TestSuiteForEnvs:
 
     @pytest.mark.parametrize("use_random_starting_pos", [True, False])
     def test_get_goal_successes(self, use_random_starting_pos: bool, env_fn):
+        if use_random_starting_pos and env_fn == PandasEnv:
+            pytest.skip("Pandas can't instatiate in any position")
         env = env_fn(use_random_starting_pos=use_random_starting_pos)
         assert all(len(successes) == 0 for successes in env.get_successes_of_goals().values())
         difficult_goal = env.observation_space["desired_goal"].high
@@ -162,7 +165,7 @@ class TestSuiteForEnvs:
             pass
 
         env.reset()
-        env.set_possible_goals(np.array([[1, 1]]))
+        env.set_possible_goals(env.observation_space["desired_goal"].high[None])
         assert not done(env.step(null_action))
 
     def test_env_trajectory(self, env_fn):
@@ -176,7 +179,9 @@ class TestSuiteForEnvs:
     def test_random_goals_cover_space(self, env_fn):
         env = env_fn(seed=0)
         reset_goals = np.array([env.reset().desired_goal for _ in range(100)])
-        assert cover_space(reset_goals)
+
+        relevant_dims = np.isfinite(env.observation_space["desired_goal"].high)
+        assert cover_space(reset_goals[:relevant_dims])
 
     def test_obs_size_as_expected(self, env_fn_and_obs_size):
         env_fn, obs_size = env_fn_and_obs_size
