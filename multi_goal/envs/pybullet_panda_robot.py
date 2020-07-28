@@ -1,6 +1,6 @@
 import math
 import time
-from itertools import repeat, chain
+from itertools import repeat, chain, count
 
 import gym
 import numpy as np
@@ -30,10 +30,15 @@ class PandaSimulator(Simulator):
         p.setGravity(0, -9.8, 0)
         p.loadURDF("plane.urdf", baseOrientation=p.getQuaternionFromEuler([-math.pi/2, 0, 0]))
         self._pandasim = PandaSim(bullet_client=p, offset=[0, 0, 0])
+        spheres_to_delete_ids = [5, 6, 7]
+        cubes_to_delete_ids = [3, 4]
+        tray_id = [1]
+        [p.removeBody(e) for e in spheres_to_delete_ids + cubes_to_delete_ids + tray_id]
         self.normed_starting_agent_obs = self._get_all_legos_pos_and_orns()
         self._original_joint_states = p.getJointStates(self._pandasim.panda, range(self._num_joints))
+        self._goal_pos = None
 
-        goal_space = gym.spaces.Box(low=np.array([-1]*3 + [-np.inf]*4),
+        goal_space = gym.spaces.Box(low=np.array([-1, 0, -1] + [-np.inf]*4),
                                     high=np.array([1]*3 + [np.inf]*4))  # lego: 3 pos + 4 orn
         self.observation_space = gym.spaces.Dict(spaces={
             "observation": gym.spaces.Box(low=-np.inf, high=np.inf, shape=(2*self._num_joints, )),  # 2 = pos + vel
@@ -81,11 +86,12 @@ class PandaSimulator(Simulator):
 
     def set_agent_pos(self, pos: np.ndarray) -> None:
         self._reset_panda_to_original_joint_states()
+        lego_pos = self.normed_starting_agent_obs[:3]
+        lego_orn = self.normed_starting_agent_obs[3:]
+        self._p.resetBasePositionAndOrientation(self._pandasim.legos[0], lego_pos, lego_orn)
 
     def set_goal_pos(self, pos: np.ndarray) -> None:
-        orn = pos[3:]
-        pos = pos[:3]
-        pybullet.resetBasePositionAndOrientation(self._pandasim.legos[0], pos, orn)
+        self._goal_pos = pos
 
     def is_success(self, achieved: np.ndarray, desired: np.ndarray) -> bool:
         achieved_pos = achieved[:3]
@@ -105,4 +111,8 @@ class PandaSimulator(Simulator):
 if __name__ == '__main__':
     env = PandasEnv(visualize=True)
     while True:
-        obs = env.step(action=np.random.uniform(-1, 1, 4))
+        obs = env.reset()
+        for t in count():
+            obs = env.step(action=np.random.uniform(-1, 1, 4))
+            if t >= 200:
+                break

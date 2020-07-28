@@ -39,6 +39,7 @@ class ToyLabSimulator(Simulator):
             "desired_goal": gym.spaces.Box(low=-1, high=1, shape=(2, )),
             "achieved_goal": gym.spaces.Box(low=-1, high=1, shape=(2, ))
         })
+        # TODO: agent_pos and goal_pos are not part of the public API.
         self.agent_pos = None
         self.goal_pos = None
         self._plot = None
