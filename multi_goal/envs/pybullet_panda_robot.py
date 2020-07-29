@@ -50,7 +50,7 @@ class PandaSimulator(Simulator):
             "achieved_goal": goal_space
         })
         self.action_dim = 4  # [dx, dy, dz, dgrasp] as a change in gripper 3d-positon, where the y-axis references the height"""
-        self._sim_steps_per_timestep = 10
+        self._sim_steps_per_timestep = 20
         self._do_visualize = visualize
 
     def _remove_unnecessary_objects(self):
@@ -116,11 +116,34 @@ class PandaSimulator(Simulator):
             pybullet.resetJointState(self._pandasim.panda, idx, pos)
 
 
+def keyboard_control():
+    """Returns an action based on key control.
+    horizontal: {w,a,s,d} vertical: {y,x},  gripper: {c}"""
+    cmd = input("press one key to move: {w,a,s,d,x,y,c}")
+    red, green, blue, grip = 0, 0, 0, 0  # Axis colors
+    if cmd == 'w':
+        red += 1
+    if cmd == 's':
+        red -= 1
+    if cmd == 'a':
+        blue -= 1
+    if cmd == 'd':
+        blue += 1
+    if cmd == 'y':
+        green -= 1
+    if cmd == 'x':
+        green += 1
+    if cmd == 'c':
+        grip += 1
+    return np.array([red, green, blue, grip])
+
+
 if __name__ == '__main__':
     env = PandasEnv(visualize=True)
     while True:
         obs = env.reset()
         for t in count():
-            obs = env.step(action=np.random.uniform(-1, 1, 4))
+            action = np.random.uniform(-1, 1, 4)  # keyboard_control()
+            obs = env.step(action=action)
             if t >= 200:
                 break
