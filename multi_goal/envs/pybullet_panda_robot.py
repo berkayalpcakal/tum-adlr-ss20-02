@@ -21,21 +21,25 @@ class PandasEnv(SettableGoalEnv):
 
 class PandaSimulator(Simulator):
     _num_joints = 12
+    _arm_joints = list(range(pandaNumDofs))
+    _grasp_joints = [9, 10]
 
     def __init__(self, visualize=False):
         self._p = p = BulletClient(connection_mode=pybullet.GUI if visualize else pybullet.DIRECT)
         p.setAdditionalSearchPath(pd.getDataPath())
         p.configureDebugVisualizer(p.COV_ENABLE_Y_AXIS_UP, 1)
-        #p.configureDebugVisualizer(p.COV_ENABLE_GUI, 0)
+        p.configureDebugVisualizer(p.COV_ENABLE_GUI, 0)
         p.setGravity(0, -9.8, 0)
         p.loadURDF("plane.urdf", baseOrientation=p.getQuaternionFromEuler([-math.pi/2, 0, 0]))
         self._pandasim = PandaSim(bullet_client=p, offset=[0, 0, 0])
-        spheres_to_delete_ids = [5, 6, 7]
-        cubes_to_delete_ids = [3, 4]
-        tray_id = [1]
-        [p.removeBody(e) for e in spheres_to_delete_ids + cubes_to_delete_ids + tray_id]
+        self._remove_unnecessary_objects()
+
+        abs_lego_starting_pos = [0, 0.015, -0.5]
+        abs_lego_starting_euler_orn = [-np.pi/2, 0, 0]
+        p.resetBasePositionAndOrientation(self._pandasim.legos[0], abs_lego_starting_pos, p.getQuaternionFromEuler(abs_lego_starting_euler_orn))
         self.normed_starting_agent_obs = self._get_all_legos_pos_and_orns()
-        self._original_joint_states = p.getJointStates(self._pandasim.panda, range(self._num_joints))
+
+        self._original_joint_states = self._p.getJointStates(self._pandasim.panda, range(self._num_joints))
         self._goal_pos = None
 
         goal_space = gym.spaces.Box(low=np.array([-1, 0, -1] + [-np.inf]*4),
@@ -49,17 +53,22 @@ class PandaSimulator(Simulator):
         self._sim_steps_per_timestep = 10
         self._do_visualize = visualize
 
+    def _remove_unnecessary_objects(self):
+        spheres_ids = [5, 6, 7]
+        legos_ids = [3, 4]
+        tray_id = [1]
+        [self._p.removeBody(e) for e in spheres_ids + legos_ids + tray_id]
+
     def step(self, action: np.ndarray) -> SimObs:
         action = [*np.array(action)[:3] / 100, action[-1]]
         cur_pos, *_ = self._p.getLinkState(self._pandasim.panda, pandaEndEffectorIndex)
         orn = self._p.getQuaternionFromEuler([math.pi/2., 0., 0.])
         pos = [coord+delta for coord, delta in zip(cur_pos, action)]
 
-        grasp_joints = [9, 10]
         grasp_forces = [10, 10]
         dgrasp = action[-1]
 
-        joint_nums = chain(range(pandaNumDofs), grasp_joints)
+        joint_nums = chain(self._arm_joints, self._grasp_joints)
         forces = chain(repeat(5*240, pandaNumDofs), grasp_forces)
         desired_poses = self._p.calculateInverseKinematics(self._pandasim.panda, pandaEndEffectorIndex, pos, orn, ll, ul, jr, rp, maxNumIterations=20)
         desired_poses = chain(desired_poses[:-2], [dgrasp, dgrasp])
@@ -80,15 +89,14 @@ class PandaSimulator(Simulator):
         return np.array([num for (pos, orn) in pos_and_orns for num in chain(pos, orn)])
 
     def _get_joints_info(self) -> np.ndarray:
+        needed_indices = list(chain(self._arm_joints, self._grasp_joints))
         joint_states = self._p.getJointStates(self._pandasim.panda, range(self._num_joints))
-        pos, vels, *_ = zip(*joint_states)
+        pos, vels, *_ = zip(*np.array(joint_states)[needed_indices])
         return np.array([*pos, *vels])
 
     def set_agent_pos(self, pos: np.ndarray) -> None:
         self._reset_panda_to_original_joint_states()
-        lego_pos = self.normed_starting_agent_obs[:3]
-        lego_orn = self.normed_starting_agent_obs[3:]
-        self._p.resetBasePositionAndOrientation(self._pandasim.legos[0], lego_pos, lego_orn)
+        self._p.resetBasePositionAndOrientation(self._pandasim.legos[0], pos[:3], pos[3:])
 
     def set_goal_pos(self, pos: np.ndarray) -> None:
         self._goal_pos = pos
