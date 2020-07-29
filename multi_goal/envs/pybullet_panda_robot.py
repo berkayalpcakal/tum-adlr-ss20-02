@@ -13,7 +13,7 @@ import pybullet
 from multi_goal.envs import Simulator, SimObs, SettableGoalEnv
 
 
-class PandasEnv(SettableGoalEnv):
+class PandaEnv(SettableGoalEnv):
     def __init__(self, visualize=False, seed=0, max_episode_len=200, use_random_starting_pos=False):
         super().__init__(sim=PandaSimulator(visualize=visualize), max_episode_len=max_episode_len, seed=seed,
                          use_random_starting_pos=use_random_starting_pos)
@@ -111,9 +111,9 @@ class PandaSimulator(Simulator):
         pass
 
     def _reset_panda_to_original_joint_states(self):
-        joint_positions = [state[0] for state in self._original_joint_states]
-        for idx, pos in enumerate(joint_positions):
-            pybullet.resetJointState(self._pandasim.panda, idx, pos)
+        joint_pos_and_vels = [(state[0], state[1]) for state in self._original_joint_states]
+        for idx, (pos, vel) in enumerate(joint_pos_and_vels):
+            self._p.resetJointState(self._pandasim.panda, idx, pos, vel)
 
 
 def keyboard_control():
@@ -139,7 +139,7 @@ def keyboard_control():
 
 
 if __name__ == '__main__':
-    env = PandasEnv(visualize=True)
+    env = PandaEnv(visualize=True)
     while True:
         obs = env.reset()
         for t in count():

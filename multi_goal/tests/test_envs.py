@@ -6,7 +6,7 @@ import pytest
 from multi_goal.GenerativeGoalLearning import trajectory, null_agent
 from multi_goal.envs import Observation
 from multi_goal.envs.pybullet_labyrinth_env import Labyrinth, HardLabyrinth
-from multi_goal.envs.pybullet_panda_robot import PandasEnv
+from multi_goal.envs.pybullet_panda_robot import PandaEnv
 from multi_goal.envs.toy_labyrinth_env import normalizer, ToyLabSimulator, ToyLab
 import numpy as np
 
@@ -29,7 +29,7 @@ def test_are_on_same_side_of_wall():
     assert not c._are_on_same_side_of_wall(below_wall, above_wall)
 
 
-@pytest.fixture(params=[Labyrinth, ToyLab, HardLabyrinth, PandasEnv], scope="module")
+@pytest.fixture(params=[Labyrinth, ToyLab, HardLabyrinth, PandaEnv], scope="module")
 def env_fn(request):
     yield request.param
 
@@ -47,7 +47,7 @@ class TestSuiteForEnvs:
             assert env.compute_reward(g, g, None) == max(env.reward_range)
 
     def test_env_normalization(self, env_fn):
-        if env_fn == PandasEnv:
+        if env_fn == PandaEnv:
             pytest.skip("Pandas Env is not yet normalized to -1, 1")
 
         env = env_fn()
@@ -80,7 +80,7 @@ class TestSuiteForEnvs:
 
     @pytest.mark.parametrize("use_random_starting_pos", [True, False])
     def test_get_goal_successes(self, use_random_starting_pos: bool, env_fn):
-        if use_random_starting_pos and env_fn == PandasEnv:
+        if use_random_starting_pos and env_fn == PandaEnv:
             pytest.skip("Pandas can't instatiate in any position")
         env = env_fn(use_random_starting_pos=use_random_starting_pos)
         assert all(len(successes) == 0 for successes in env.get_successes_of_goals().values())
@@ -180,7 +180,7 @@ class TestSuiteForEnvs:
         assert len(list(trajectory(pi=agent, env=env, goal=goal))) == 10
 
     def test_random_goals_cover_space(self, env_fn):
-        if env_fn == PandasEnv:
+        if env_fn == PandaEnv:
             pytest.skip("Pandas Sim is not normalized yet to -1, 1")
 
         env = env_fn(seed=0)
