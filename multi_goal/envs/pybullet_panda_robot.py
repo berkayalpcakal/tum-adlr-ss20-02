@@ -1,3 +1,5 @@
+import os
+
 import math
 import time
 from itertools import repeat, chain, count
@@ -23,6 +25,9 @@ class PandaSimulator(Simulator):
     _num_joints = 12
     _arm_joints = list(range(pandaNumDofs))
     _grasp_joints = [9, 10]
+    _all_joint_idxs = _arm_joints + _grasp_joints
+    __filelocation__ = os.path.realpath(os.path.join(os.getcwd(), os.path.dirname(__file__)))
+    _green_ball_fname = os.path.join(__filelocation__, 'assets/immaterial_ball.urdf')
 
     def __init__(self, visualize=False):
         self._p = p = BulletClient(connection_mode=pybullet.GUI if visualize else pybullet.DIRECT)
@@ -40,12 +45,13 @@ class PandaSimulator(Simulator):
         self.normed_starting_agent_obs = self._get_all_legos_pos_and_orns()
 
         self._original_joint_states = self._p.getJointStates(self._pandasim.panda, range(self._num_joints))
-        self._goal_pos = None
+        self._goal_pos = np.zeros(7)
+        self._goal_ball = p.loadURDF(self._green_ball_fname, basePosition=self._goal_pos[:3], useFixedBase=1, globalScaling=1/8)
 
-        goal_space = gym.spaces.Box(low=np.array([-1, 0, -1] + [-np.inf]*4),
-                                    high=np.array([1]*3 + [np.inf]*4))  # lego: 3 pos + 4 orn
+        goal_space = gym.spaces.Box(low=np.array([-0.5, 0, -0.75] + [-np.inf]*4),
+                                    high=np.array([0.5, 0.5, -0.15] + [np.inf]*4))  # lego: 3 pos + 4 orn
         self.observation_space = gym.spaces.Dict(spaces={
-            "observation": gym.spaces.Box(low=-np.inf, high=np.inf, shape=(2*self._num_joints, )),  # 2 = pos + vel
+            "observation": gym.spaces.Box(low=-np.inf, high=np.inf, shape=(2*len(self._all_joint_idxs), )),  # 2 = pos + vel
             "desired_goal": goal_space,
             "achieved_goal": goal_space
         })
@@ -60,7 +66,8 @@ class PandaSimulator(Simulator):
         [self._p.removeBody(e) for e in spheres_ids + legos_ids + tray_id]
 
     def step(self, action: np.ndarray) -> SimObs:
-        action = [*np.array(action)[:3] / 100, action[-1]]
+        movement_factor = 1/50
+        action = [*(np.array(action)[:3] * movement_factor), action[-1]]
         cur_pos, *_ = self._p.getLinkState(self._pandasim.panda, pandaEndEffectorIndex)
         orn = self._p.getQuaternionFromEuler([math.pi/2., 0., 0.])
         pos = [coord+delta for coord, delta in zip(cur_pos, action)]
@@ -68,13 +75,14 @@ class PandaSimulator(Simulator):
         grasp_forces = [10, 10]
         dgrasp = action[-1]
 
-        joint_nums = chain(self._arm_joints, self._grasp_joints)
         forces = chain(repeat(5*240, pandaNumDofs), grasp_forces)
-        desired_poses = self._p.calculateInverseKinematics(self._pandasim.panda, pandaEndEffectorIndex, pos, orn, ll, ul, jr, rp, maxNumIterations=20)
-        desired_poses = chain(desired_poses[:-2], [dgrasp, dgrasp])
 
-        for _ in range(self._sim_steps_per_timestep):
-            for joint, pose, force in zip(joint_nums, desired_poses, forces):
+        for idx in range(self._sim_steps_per_timestep):
+            if idx % 5 == 0:
+                desired_poses = self._p.calculateInverseKinematics(self._pandasim.panda, pandaEndEffectorIndex, pos, orn, ll, ul, jr, rp, maxNumIterations=20)
+                desired_poses = chain(desired_poses[:-2], [dgrasp, dgrasp])
+
+            for joint, pose, force in zip(self._all_joint_idxs, desired_poses, forces):
                 self._p.setJointMotorControl2(self._pandasim.panda, joint, self._p.POSITION_CONTROL, pose, force=force)
             self._p.stepSimulation()
             if self._do_visualize:
@@ -89,9 +97,8 @@ class PandaSimulator(Simulator):
         return np.array([num for (pos, orn) in pos_and_orns for num in chain(pos, orn)])
 
     def _get_joints_info(self) -> np.ndarray:
-        needed_indices = list(chain(self._arm_joints, self._grasp_joints))
         joint_states = self._p.getJointStates(self._pandasim.panda, range(self._num_joints))
-        pos, vels, *_ = zip(*np.array(joint_states)[needed_indices])
+        pos, vels, *_ = zip(*np.array(joint_states)[self._all_joint_idxs])
         return np.array([*pos, *vels])
 
     def set_agent_pos(self, pos: np.ndarray) -> None:
@@ -99,13 +106,15 @@ class PandaSimulator(Simulator):
         self._p.resetBasePositionAndOrientation(self._pandasim.legos[0], pos[:3], pos[3:])
 
     def set_goal_pos(self, pos: np.ndarray) -> None:
+        self._p.resetBasePositionAndOrientation(self._goal_ball, pos[:3], pos[3:])
         self._goal_pos = pos
 
+    _good_enough_dist = np.linalg.norm([0.03, 0.03, 0.03])
     def is_success(self, achieved: np.ndarray, desired: np.ndarray) -> bool:
         achieved_pos = achieved[:3]
         desired_pos = desired[:3]
         dist = np.linalg.norm(np.subtract(achieved_pos, desired_pos))
-        return dist < 0.01
+        return dist <= self._good_enough_dist
 
     def render(self, *args, **kwargs):
         pass
@@ -140,10 +149,12 @@ def keyboard_control():
 
 if __name__ == '__main__':
     env = PandaEnv(visualize=True)
-    while True:
+    done = False
+    while not done:
         obs = env.reset()
         for t in count():
-            action = np.random.uniform(-1, 1, 4)  # keyboard_control()
-            obs = env.step(action=action)
-            if t >= 200:
+            action = keyboard_control()
+            obs, reward, done, info = env.step(action=action)
+            print(done, obs.achieved_goal[:3].round(2), obs.desired_goal[:3].round(2))
+            if done:
                 break

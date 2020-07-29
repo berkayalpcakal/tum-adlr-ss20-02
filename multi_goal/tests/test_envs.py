@@ -198,7 +198,7 @@ class TestSuiteForEnvs:
         assert env.step(null_action)[0].observation.size == obs_size
 
 
-@pytest.fixture(params=[(Labyrinth, 2), (HardLabyrinth, 2), (ToyLab, 0)])
+@pytest.fixture(params=[(Labyrinth, 2), (HardLabyrinth, 2), (ToyLab, 0), (PandaEnv, 2*9)])
 def env_fn_and_obs_size(request):
     return request.param
 
