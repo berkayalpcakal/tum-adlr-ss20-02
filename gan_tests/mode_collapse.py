@@ -3,6 +3,7 @@ from random import shuffle
 import numpy as np
 import torch
 from scipy.stats import multivariate_normal
+import matplotlib.pyplot as plt
 
 from multi_goal.GenerativeGoalLearning import train_GAN
 from multi_goal.LSGAN import LSGAN
@@ -33,18 +34,24 @@ def do_label(pts, noise):
 
 
 contour_fn = get_updateable_contour(xlim=(-1, 1), ylim=(-1, 1))
+plt.ion()
+fig, ax = plt.subplots()
+
+num_samples  = 100
+num_noise    = num_samples // 2
+num_mixtures = 8
+folderName = "modes_stationary/with_noise_samples"
 
 if __name__ == '__main__':
-    import matplotlib.pyplot as plt
-    plt.ion()
-    fig, ax = plt.subplots()
-    num_samples = 100
-    num_mixtures = 8
     gan = LSGAN(generator_output_size=2, discriminator_input_size=2, gen_variance_coeff=0)
     G = gan.Generator
     ax.scatter(*cirlce_coords(num_mixtures), c="red")
     pts_scatter = ax.scatter([], [], c="orange")
+    ax.set_ylim([-1.0, 1.0])
+    ax.set_xlim([-1.0, 1.0])
     gan_scatter = ax.scatter([], [], c="blue")
+    noise_scatter = ax.scatter([], [], c="black")
+    idx = 0
     while True:
         pts = multimodal_sample(num_samples, num_mixtures)
         noise = np.random.uniform(-1, 1, size=(num_samples, 2))
@@ -54,6 +61,9 @@ if __name__ == '__main__':
 
         contour_fn(gan_pts, ax)
         pts_scatter.set_offsets(pts)
+        noise_scatter.set_offsets(noise)
+        plt.savefig("./figs/{}/{}.png".format(folderName, str(idx)))
         fig.tight_layout()
         fig.canvas.draw()
         fig.canvas.flush_events()
+        idx += 1
