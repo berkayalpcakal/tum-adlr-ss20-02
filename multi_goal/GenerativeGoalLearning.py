@@ -26,6 +26,8 @@ Returns = Sequence[float]
 
 
 class Agent:
+    name: str
+
     def __call__(self, obs: Observation) -> np.ndarray:
         raise NotImplementedError
 
@@ -128,6 +130,9 @@ def train_GAN(goals: Tensor, labels: Sequence[int], goalGAN):
 
 @print_message("Updating the regularized replay buffer")
 def update_replay(goals: Tensor, goals_old: Tensor):
+    if goals_old.shape[0] == 0:
+        goals_old = goals[0][None]
+
     eps = 0.1
     for g in goals:
         g_is_close_to_goals_old = min((torch.dist(g, g_old) for g_old in goals_old)) < eps
@@ -167,22 +172,27 @@ def trajectory(pi: Agent, env: ISettableGoalEnv, goal: np.ndarray = None,
 
 
 @print_message("Evaluating agent in env...")
-def evaluate(agent: Agent, env: ISettableGoalEnv, very_granular=False):
-    coarseness = complex(0, 30 if very_granular else 6)
+def evaluate(agent: Agent, env: ISettableGoalEnv, very_granular=False, plot=True, silent=False,
+             coarseness_per_dim=30):
+    coarseness = complex(0, coarseness_per_dim if very_granular else 6)
     goals = np.mgrid[-1:1:coarseness, -1:1:coarseness].reshape((2, -1)).T
     env.seed(0)
     env.set_possible_goals(goals)
     for idx, _ in enumerate(goals):
         consume(trajectory(agent, env))
-        print(f"done evaluation goal #{idx}", flush=True)
+        if not silent:
+            print(f"done evaluation goal #{idx}", flush=True)
     reached = np.array([goal for goal, successes in env.get_successes_of_goals().items() if successes[0]])
     not_reached = np.array([goal for goal, successes in env.get_successes_of_goals().items() if not successes[0]])
     env.set_possible_goals(goals=None, entire_space=True)
-    env.render(other_positions={"red": not_reached, "green": reached},
-               show_agent_and_goal_pos=False)
+    if plot:
+        env.render(other_positions={"red": not_reached, "green": reached},
+                   show_agent_and_goal_pos=False)
+    return reached, not_reached
 
 
-def train_goalGAN(π: Agent, goalGAN: LSGAN, env: ISettableGoalEnv, eval_env: ISettableGoalEnv) -> Iterator[None]:
+def train_goalGAN(π: Agent, goalGAN: LSGAN, env: ISettableGoalEnv, eval_env: ISettableGoalEnv,
+                  pretrain_iters=5, use_old_goals=True) -> Iterator[None]:
     """
     Algorithm in the GAN paper, Florensa 2018
 
@@ -198,20 +208,18 @@ def train_goalGAN(π: Agent, goalGAN: LSGAN, env: ISettableGoalEnv, eval_env: IS
     """
 
     #### PARAMETERS ####
-    initial_iterations  = 5
     num_gan_goals       = 60
-    num_old_goals       = num_gan_goals // 2
+    num_old_goals       = num_gan_goals // 2 if use_old_goals else 0
     num_rand_goals      = num_gan_goals // 2
     ####################
 
     log_iter = lambda it_num: print(f"\n### BEGIN ITERATION {it_num} ###")
 
     # Initial training of the policy with random goals
-    for iter_num in range(initial_iterations):
+    for iter_num in range(pretrain_iters):
         log_iter(iter_num)
         rand_goals = torch.Tensor(num_rand_goals, dim_goal(env)).uniform_(-1, 0)
         π, returns = yield from update_and_eval_policy(rand_goals, π, env, eval_env)
-        print(f"Average reward: {(sum(returns) / len(returns)):.2f}")
         labels     = label_goals(returns)
         display_goals(rand_goals.detach().numpy(), returns, iter_num, env, fileNamePrefix='_')
         goalGAN    = train_GAN(rand_goals, labels, goalGAN)
@@ -219,7 +227,7 @@ def train_goalGAN(π: Agent, goalGAN: LSGAN, env: ISettableGoalEnv, eval_env: IS
     close_to_starting_pos = torch.Tensor([env.starting_agent_pos]) + 0.1*torch.randn(num_old_goals, dim_goal(env))
     goals_old = torch.clamp(close_to_starting_pos, min=-1, max=1)
 
-    for iter_num in count(initial_iterations):
+    for iter_num in count(pretrain_iters):
         log_iter(iter_num)
         z             = torch.randn(size=(num_gan_goals, goalGAN.Generator.noise_size))
         raw_gan_goals = goalGAN.Generator.forward(z).detach()
@@ -228,7 +236,6 @@ def train_goalGAN(π: Agent, goalGAN: LSGAN, env: ISettableGoalEnv, eval_env: IS
         all_goals     = torch.cat([gan_goals, sample(goals_old, k=num_old_goals), rand_goals])
         π, returns    = yield from update_and_eval_policy(all_goals, π, env, eval_env)
         display_goals(all_goals.detach().numpy(), returns, iter_num, env, gan_goals=raw_gan_goals.numpy())
-        print(f"Average reward: {(sum(returns) / len(returns)):.2f}")
         labels        = label_goals(returns)
         if all([lab == 0 for lab in labels]): warnings.warn("All labels are 0")
         goalGAN       = train_GAN(all_goals, labels, goalGAN)

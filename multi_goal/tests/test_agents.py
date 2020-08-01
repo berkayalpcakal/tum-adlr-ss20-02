@@ -13,4 +13,4 @@ def test_class_instantiation():
     for a in [a1, a2, a3]:
         consume(trajectory(pi=a, env=env))
 
-    cb = EvaluateCallback(agent=a1, env=env)
+    cb = EvaluateCallback(agent=a1, eval_env=env)

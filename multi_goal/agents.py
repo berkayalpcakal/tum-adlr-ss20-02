@@ -1,7 +1,6 @@
 import os
 import warnings
-from datetime import datetime
-from typing import List, Sequence, Callable
+from typing import Sequence, Callable
 
 import numpy as np
 from stable_baselines.common.callbacks import CheckpointCallback, BaseCallback, CallbackList
@@ -19,6 +18,8 @@ from multi_goal.envs import Observation, ISettableGoalEnv
 
 
 class PPOAgent(Agent):
+    name = "ppo"
+
     def __init__(self, env: ISettableGoalEnv, verbose=1, experiment_name="ppo", rank=0):
         self._env = env
         self._dirs = Dirs(experiment_name=f"{type(env).__name__}-{experiment_name}", rank=rank)
@@ -39,13 +40,14 @@ class PPOAgent(Agent):
     def train(self, timesteps: int, num_checkpoints=4, eval_env: ISettableGoalEnv = None,
               callbacks: Sequence[BaseCallback] = None):
         ppo_offset = 128
-        env = self._env if eval_env is None else eval_env
         callbacks = [] if callbacks is None else callbacks
-        cb = CallbackList([*make_callbacks(timesteps, num_checkpoints, self._dirs, self, env), *callbacks])
-        self._model.learn(total_timesteps=timesteps+ppo_offset, callback=cb, log_interval=100)
+        cb = CheckpointCallback(save_freq=timesteps//num_checkpoints, save_path=self._dirs.models, name_prefix=self._dirs.prefix)
+        self._model.learn(total_timesteps=timesteps+ppo_offset, callback=CallbackList([cb, *callbacks]), log_interval=100)
 
 
 class HERSACAgent(Agent):
+    name = "her-sac"
+
     def __init__(self, env: ISettableGoalEnv, verbose=1, rank=0, experiment_name="her-sac"):
         self._env = env
         self._dirs = Dirs(experiment_name=f"{type(env).__name__}-{experiment_name}", rank=rank)
@@ -63,36 +65,37 @@ class HERSACAgent(Agent):
 
     def train(self, timesteps: int, eval_env: ISettableGoalEnv = None,
               callbacks: Sequence[BaseCallback] = None, num_checkpoints=4) -> None:
-        env = self._env if eval_env is None else eval_env
         callbacks = [] if callbacks is None else callbacks
-        cb = CallbackList([*make_callbacks(timesteps, num_checkpoints, self._dirs, self, env), *callbacks])
-        self._model.learn(total_timesteps=timesteps, callback=cb)
-
-
-def make_callbacks(timesteps: int, num_checkpoints: int, dirs: Dirs,
-                   agent: Agent, env: ISettableGoalEnv) -> List[BaseCallback]:
-    return [
-        CheckpointCallback(save_freq=timesteps//num_checkpoints, save_path=dirs.models, name_prefix=dirs.prefix),
-        #EvaluateCallback(agent=agent, env=env)
-    ]
+        cb = CheckpointCallback(save_freq=timesteps//num_checkpoints, save_path=self._dirs.models, name_prefix=self._dirs.prefix)
+        self._model.learn(total_timesteps=timesteps, callback=CallbackList([cb, *callbacks]))
 
 
 class EvaluateCallback(BaseCallback):
-    def __init__(self, agent: Agent, env: ISettableGoalEnv):
+    def __init__(self, agent: Agent, eval_env: ISettableGoalEnv, rank=0):
         super().__init__()
         self._agent = agent
-        self._settable_goal_env = env
-        self._last_eval = datetime.now()
+        self._eval_env = eval_env
+        self._log_fname = f"{type(eval_env).__name__}-{agent.name}-{rank}-performance.csv"
+        with open(self._log_fname, "w") as file:
+            file.write("Step,MapPctCovered\n")
 
     def _on_step(self) -> bool:
-        if (datetime.now() - self._last_eval).seconds > 20:
-            evaluate(agent=self._agent, env=self._settable_goal_env)
-            self._last_eval = datetime.now()
+        if self.num_timesteps % 10000 == 0:
+            self._log_performance()
         return True
+
+    def _log_performance(self):
+        reached, not_reached = evaluate(agent=self._agent, env=self._eval_env, plot=False,
+                                        silent=True, very_granular=True, coarseness_per_dim=10)
+        pct = len(reached) / (len(reached) + len(not_reached))
+        log = f"{self.num_timesteps},{round(pct, 6)}\n"
+        with open(self._log_fname, "a") as file:
+            file.write(log)
 
 
 class GoalGANAgent(Agent):
     def __init__(self, env: ISettableGoalEnv, agent: Agent):
+        self.name = f"goalgan-{agent.name}"
         self._agent = agent
         self._gan = initialize_GAN(env=env)
         self._env = env
@@ -102,10 +105,14 @@ class GoalGANAgent(Agent):
     def __call__(self, obs: Observation) -> np.ndarray:
         return self._agent(obs)
 
-    def train(self, timesteps: int) -> None:
-        loop = train_goalGAN(π=self._agent, goalGAN=self._gan, env=self._env, eval_env=None)
+    def train(self, timesteps: int, use_buffer=True, callbacks: Sequence[BaseCallback] = None) -> None:
+        pretrain_iters = 0 if isinstance(self._agent, HERSACAgent) else 5
+        loop = train_goalGAN(π=self._agent, goalGAN=self._gan, env=self._env, eval_env=None,
+                             pretrain_iters=pretrain_iters, use_old_goals=use_buffer)
+
+        callbacks = [] if callbacks is None else callbacks
         cb = AnyFunctionTrainingCallback(callback=lambda: next(loop))
-        self._agent.train(timesteps=timesteps, callbacks=[cb])
+        self._agent.train(timesteps=timesteps, callbacks=[cb, *callbacks])
 
 
 class AnyFunctionTrainingCallback(BaseCallback):
