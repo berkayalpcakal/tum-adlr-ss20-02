@@ -12,6 +12,7 @@ num_samples = 100
 num_noise_samples = num_samples // 2
 num_mixtures = 4
 eps = 0.2
+folderName = "modes_moving/without_noise_samples"
 
 
 def create_target_trajectory():
@@ -67,15 +68,16 @@ if __name__ == '__main__':
     import matplotlib.pyplot as plt
     plt.ion()
     fig, ax = plt.subplots()
-    gan = LSGAN(generator_output_size=2, discriminator_input_size=2, gen_variance_coeff=0.001, generator_hidden_size=64, discriminator_hidden_size=128)
+    gan = LSGAN(generator_output_size=2, discriminator_input_size=2, gen_variance_coeff=0.001, generator_hidden_size=32, discriminator_hidden_size=64)
     G = gan.Generator
     trajectory, angles = create_target_trajectory()
 
     pts_scatter = ax.scatter([], [], c="orange")
     gan_scatter = ax.scatter([], [], c="blue")
-    boundary_circles = [ax.add_artist(plt.Circle((0, 0), eps, color="orange", fill=False)) for _ in range(num_mixtures)]
+    #boundary_circles = [ax.add_artist(plt.Circle((0, 0), eps, color="orange", fill=False)) for _ in range(num_mixtures)]
 
     gan_pts = G(torch.randn(num_samples, 4)).detach().numpy()
+    idx = 0
     for circle_center, angle in zip(trajectory, angles):
         xs, ys = cirlce_coords(num_mixtures, center=circle_center, rotation=angle)
         target_pts = multimodal_sample(num_samples, xs, ys, num_mixtures)
@@ -88,8 +90,10 @@ if __name__ == '__main__':
         contour_fn(gan_pts, ax)
         show_gan_pts = False
         gan_scatter.set_offsets(gan_pts) if show_gan_pts else pts_scatter.set_offsets(target_pts)
-        [circle.set_center((x, y)) for circle, x, y in zip(boundary_circles, xs, ys)]
+        #[circle.set_center((x, y)) for circle, x, y in zip(boundary_circles, xs, ys)]
 
+        plt.savefig("./figs/{}/{}.png".format(folderName, str(idx)))
         fig.tight_layout()
         fig.canvas.draw()
         fig.canvas.flush_events()
+        idx += 1
