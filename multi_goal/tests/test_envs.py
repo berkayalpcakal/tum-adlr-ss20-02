@@ -2,6 +2,7 @@ from itertools import combinations
 
 import gym
 import pytest
+from pybullet_robots.panda.panda_sim_grasp import pandaNumDofs
 
 from multi_goal.GenerativeGoalLearning import trajectory, null_agent
 from multi_goal.envs import Observation
@@ -200,7 +201,7 @@ class TestSuiteForEnvs:
 
 vel2d_plus_time = 3
 time_only = 1
-pos_and_vels = 9+9
+pos_and_vels = 2*7
 
 
 @pytest.fixture(params=[(ToyLab, time_only),

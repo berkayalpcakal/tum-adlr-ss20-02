@@ -16,7 +16,7 @@ from multi_goal.envs import Simulator, SimObs, SettableGoalEnv
 
 
 class PandaEnv(SettableGoalEnv):
-    def __init__(self, visualize=False, seed=0, max_episode_len=200, use_random_starting_pos=False):
+    def __init__(self, visualize=False, seed=0, max_episode_len=100, use_random_starting_pos=False):
         super().__init__(sim=PandaSimulator(visualize=visualize), max_episode_len=max_episode_len, seed=seed,
                          use_random_starting_pos=use_random_starting_pos)
 
@@ -24,8 +24,8 @@ class PandaEnv(SettableGoalEnv):
 class PandaSimulator(Simulator):
     _num_joints = 12
     _arm_joints = list(range(pandaNumDofs))
-    _grasp_joints = [9, 10]
-    _all_joint_idxs = _arm_joints + _grasp_joints
+    #_grasp_joints = [9, 10]
+    _all_joint_idxs = _arm_joints  # + _grasp_joints
     __filelocation__ = os.path.realpath(os.path.join(os.getcwd(), os.path.dirname(__file__)))
     _green_ball_fname = os.path.join(__filelocation__, 'assets/immaterial_ball.urdf')
 
@@ -77,16 +77,18 @@ class PandaSimulator(Simulator):
         cur_pos, *_ = self._p.getLinkState(self._pandasim.panda, pandaEndEffectorIndex)
         pos = [coord+delta for coord, delta in zip(cur_pos, action)]
 
-        grasp_forces = [10, 10]
-        dgrasp = action[-1]
+        #grasp_forces = [10, 10]
+        #dgrasp = action[-1]
 
-        forces = chain(repeat(5*240, pandaNumDofs), grasp_forces)
+        #forces = chain(repeat(5*240, pandaNumDofs), grasp_forces)
+        forces = [5*240]*pandaNumDofs
 
         for idx in range(self._sim_steps_per_timestep):
             if idx % 5 == 0:
                 desired_poses = self._p.calculateInverseKinematics(
                     self._pandasim.panda, pandaEndEffectorIndex, pos, self._pointing_down_orn, ll, ul, jr, rp, maxNumIterations=20)
-                desired_poses = chain(desired_poses[:-2], [dgrasp, dgrasp])
+                #desired_poses = chain(desired_poses[:-2], [dgrasp, dgrasp])
+                desired_poses = desired_poses[:-2]
 
             for joint, pose, force in zip(self._all_joint_idxs, desired_poses, forces):
                 self._p.setJointMotorControl2(self._pandasim.panda, joint, self._p.POSITION_CONTROL, pose, force=force)
