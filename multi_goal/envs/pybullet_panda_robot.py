@@ -61,7 +61,7 @@ class PandaSimulator(Simulator):
             "desired_goal": goal_space,
             "achieved_goal": goal_space
         })
-        self.action_dim = 4  # [dx, dy, dz, dgrasp] as a change in gripper 3d-positon, where the y-axis references the height"""
+        self.action_dim = 3  # [dx, dy, dz, dgrasp] as a change in gripper 3d-positon, where the y-axis references the height"""
         self._sim_steps_per_timestep = 20
         self._do_visualize = visualize
 
@@ -73,7 +73,7 @@ class PandaSimulator(Simulator):
 
     def step(self, action: np.ndarray) -> SimObs:
         movement_factor = 1/50
-        action = [*(np.array(action)[:3] * movement_factor), action[-1]]
+        action = [*(np.array(action)[:3] * movement_factor), 0]  # action[-1]
         cur_pos, *_ = self._p.getLinkState(self._pandasim.panda, pandaEndEffectorIndex)
         pos = [coord+delta for coord, delta in zip(cur_pos, action)]
 
@@ -171,8 +171,8 @@ if __name__ == '__main__':
     while not done:
         obs = env.reset()
         for t in count():
-            action = keyboard_control()
+            action = keyboard_control()[:3]
             obs, reward, done, info = env.step(action=action)
-            print(done, obs.achieved_goal[:3].round(2), obs.desired_goal[:3].round(2))
+            print(done, obs.achieved_goal.round(2), obs.desired_goal.round(2))
             if done:
                 break
