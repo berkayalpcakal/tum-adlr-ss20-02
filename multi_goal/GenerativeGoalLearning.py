@@ -18,8 +18,9 @@ Rmin = 0.1
 Rmax = 0.9
 
 G_Input_Size  = 4       # noise dim, somehow noise size is defined as 4 in their implementation for ant_gan experiment
-G_Hidden_Size = 256
-D_Hidden_Size = 512
+G_Hidden_Size = 32
+D_Hidden_Size = 64
+GEN_VAR_COEFF = 0.001
 ####################
 
 Returns = Sequence[float]
@@ -60,6 +61,7 @@ def initialize_GAN(env: gym.GoalEnv) -> LSGAN:
                     generator_output_size=dim_goal(env),
                     discriminator_input_size=dim_goal(env),
                     discriminator_hidden_size=D_Hidden_Size,
+                    gen_variance_coeff=GEN_VAR_COEFF,
                     discriminator_output_size=1) # distinguish whether g is in GOID or not
     return goalGAN
 

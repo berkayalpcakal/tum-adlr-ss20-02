@@ -80,7 +80,7 @@ class EvaluateCallback(BaseCallback):
             file.write("Step,MapPctCovered\n")
 
     def _on_step(self) -> bool:
-        if self.num_timesteps % 10000 == 0:
+        if self.num_timesteps % 5000 == 0:
             self._log_performance()
         return True
 

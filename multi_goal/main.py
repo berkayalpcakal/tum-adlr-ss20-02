@@ -10,5 +10,5 @@ if __name__ == '__main__':
     agent = GoalGANAgent(env=env, agent=π)
 
     callback = EvaluateCallback(agent=agent, eval_env=ToyLab(seed=seed))
-    agent.train(timesteps=250000, callbacks=[callback])
+    agent.train(timesteps=int(1e6), callbacks=[callback])
 
