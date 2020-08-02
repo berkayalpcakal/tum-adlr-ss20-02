@@ -50,7 +50,8 @@ class PandaSimulator(Simulator):
         self._goal_pos = np.zeros(3)
         self._goal_ball = p.loadURDF(self._green_ball_fname, basePosition=self._goal_pos, useFixedBase=1, globalScaling=1/8)
 
-        goal_space = gym.spaces.Box(low=np.array([-0.5, 0, -0.75]), high=np.array([0.5, 0.5, -0.15]))
+        bound = np.sqrt((0.8**2)/3)
+        goal_space = gym.spaces.Box(low=np.array([-bound, 0, -bound]), high=np.array([bound, bound, -0.2]))  # dont hit base
 
         min_vel, max_vel = (-np.inf, np.inf)
         min_time, max_time = (-1, 1)
@@ -168,7 +169,7 @@ def keyboard_control():
 
 
 if __name__ == '__main__':
-    env = PandaEnv(visualize=True)
+    env = PandaEnv(visualize=True, max_episode_len=10000)
     done = False
     while not done:
         obs = env.reset()
