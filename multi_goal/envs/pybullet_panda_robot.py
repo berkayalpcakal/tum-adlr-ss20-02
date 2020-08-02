@@ -43,14 +43,14 @@ class PandaSimulator(Simulator):
         abs_lego_starting_euler_orn = [-np.pi/2, 0, 0]
         p.resetBasePositionAndOrientation(self._pandasim.legos[0], abs_lego_starting_pos, p.getQuaternionFromEuler(abs_lego_starting_euler_orn))
         #self.normed_starting_agent_obs = self._get_all_legos_pos_and_orns()
-        self.normed_starting_agent_obs = self._get_endeffector_pos_and_orn()
+        self.normed_starting_agent_obs = self._get_endeffector_pos()
 
         self._original_joint_states = self._p.getJointStates(self._pandasim.panda, range(self._num_joints))
-        self._goal_pos = np.zeros(7)
-        self._goal_ball = p.loadURDF(self._green_ball_fname, basePosition=self._goal_pos[:3], useFixedBase=1, globalScaling=1/8)
+        self._pointing_down_orn = self._p.getQuaternionFromEuler([math.pi/2., 0., 0.])
+        self._goal_pos = np.zeros(3)
+        self._goal_ball = p.loadURDF(self._green_ball_fname, basePosition=self._goal_pos, useFixedBase=1, globalScaling=1/8)
 
-        goal_space = gym.spaces.Box(low=np.array([-0.5, 0, -0.75] + [-np.inf]*4),
-                                    high=np.array([0.5, 0.5, -0.15] + [np.inf]*4))  # lego: 3 pos + 4 orn
+        goal_space = gym.spaces.Box(low=np.array([-0.5, 0, -0.75]), high=np.array([0.5, 0.5, -0.15]))
 
         min_vel, max_vel = (-np.inf, np.inf)
         min_time, max_time = (-1, 1)
@@ -75,7 +75,6 @@ class PandaSimulator(Simulator):
         movement_factor = 1/50
         action = [*(np.array(action)[:3] * movement_factor), action[-1]]
         cur_pos, *_ = self._p.getLinkState(self._pandasim.panda, pandaEndEffectorIndex)
-        orn = self._p.getQuaternionFromEuler([math.pi/2., 0., 0.])
         pos = [coord+delta for coord, delta in zip(cur_pos, action)]
 
         grasp_forces = [10, 10]
@@ -85,7 +84,8 @@ class PandaSimulator(Simulator):
 
         for idx in range(self._sim_steps_per_timestep):
             if idx % 5 == 0:
-                desired_poses = self._p.calculateInverseKinematics(self._pandasim.panda, pandaEndEffectorIndex, pos, orn, ll, ul, jr, rp, maxNumIterations=20)
+                desired_poses = self._p.calculateInverseKinematics(
+                    self._pandasim.panda, pandaEndEffectorIndex, pos, self._pointing_down_orn, ll, ul, jr, rp, maxNumIterations=20)
                 desired_poses = chain(desired_poses[:-2], [dgrasp, dgrasp])
 
             for joint, pose, force in zip(self._all_joint_idxs, desired_poses, forces):
@@ -95,13 +95,13 @@ class PandaSimulator(Simulator):
                 time.sleep(1/240)
 
         joint_pos_and_vels = self._get_joints_info()
-        agent_pos = self._get_endeffector_pos_and_orn()
+        agent_pos = self._get_endeffector_pos()
         #legos_pos_and_orns = self._get_all_legos_pos_and_orns()
         return SimObs(agent_pos=agent_pos, obs=joint_pos_and_vels, image=np.empty(0))
 
-    def _get_endeffector_pos_and_orn(self):
-        endeffector_pos, ef_orn, *_ = self._p.getLinkState(self._pandasim.panda, pandaEndEffectorIndex)
-        return np.array(list(chain(endeffector_pos, ef_orn)))
+    def _get_endeffector_pos(self):
+        endeffector_pos = self._p.getLinkState(self._pandasim.panda, pandaEndEffectorIndex)[0]
+        return np.array(endeffector_pos)
 
     def _get_all_legos_pos_and_orns(self) -> np.ndarray:
         pos_and_orns = [self._p.getBasePositionAndOrientation(l) for l in self._pandasim.legos[:1]]  # Just the first lego for now.
@@ -119,12 +119,12 @@ class PandaSimulator(Simulator):
 
     def _reset_panda_to_pos(self, pos):
         joint_poses = self._p.calculateInverseKinematics(
-            self._pandasim.panda, pandaEndEffectorIndex, pos[:3], pos[3:], ll, ul, jr, rp)
+            self._pandasim.panda, pandaEndEffectorIndex, pos, self._pointing_down_orn, ll, ul, jr, rp)
         for idx in range(pandaNumDofs):
             self._p.resetJointState(self._pandasim.panda, idx, joint_poses[idx])
 
     def set_goal_pos(self, pos: np.ndarray) -> None:
-        self._p.resetBasePositionAndOrientation(self._goal_ball, pos[:3], pos[3:])
+        self._p.resetBasePositionAndOrientation(self._goal_ball, pos, self._pointing_down_orn)
         self._goal_pos = pos
 
     _good_enough_dist = np.linalg.norm([0.03, 0.03, 0.03])
