@@ -35,7 +35,7 @@ class ToyLabSimulator(Simulator):
 
     def __init__(self):
         self.observation_space = gym.spaces.Dict(spaces={
-            "observation": gym.spaces.Box(low=0, high=0, shape=(0, )),
+            "observation": gym.spaces.Box(low=-1, high=1, shape=(1, )),  # time feature
             "desired_goal": gym.spaces.Box(low=-1, high=1, shape=(2, )),
             "achieved_goal": gym.spaces.Box(low=-1, high=1, shape=(2, ))
         })
@@ -45,11 +45,11 @@ class ToyLabSimulator(Simulator):
         self._plot = None
 
     def step(self, action: np.ndarray) -> SimObs:
-        self.agent_pos = self.simulation_step(self.agent_pos, action)
+        self.agent_pos = self._simulation_step(self.agent_pos, action)
         return SimObs(agent_pos=self._normalize(self.agent_pos), obs=np.empty(0), image=np.empty(0))
 
     _step_len = 0.5
-    def simulation_step(self, cur_pos: np.ndarray, action: np.ndarray) -> np.ndarray:
+    def _simulation_step(self, cur_pos: np.ndarray, action: np.ndarray) -> np.ndarray:
         assert cur_pos.shape == action.shape
         x1, x2 = cur_pos + self._step_len * action
 

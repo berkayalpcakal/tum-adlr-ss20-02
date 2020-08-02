@@ -50,8 +50,13 @@ class PandaSimulator(Simulator):
 
         goal_space = gym.spaces.Box(low=np.array([-0.5, 0, -0.75] + [-np.inf]*4),
                                     high=np.array([0.5, 0.5, -0.15] + [np.inf]*4))  # lego: 3 pos + 4 orn
+
+        min_vel, max_vel = (-np.inf, np.inf)
+        min_time, max_time = (-1, 1)
+        min_obs = [*repeat(min_vel, 2*len(self._all_joint_idxs)), min_time]  # 2 = pos + vel
+        max_obs = [*repeat(max_vel, 2*len(self._all_joint_idxs)), max_time]
         self.observation_space = gym.spaces.Dict(spaces={
-            "observation": gym.spaces.Box(low=-np.inf, high=np.inf, shape=(2*len(self._all_joint_idxs), )),  # 2 = pos + vel
+            "observation": gym.spaces.Box(low=np.array(min_obs), high=np.array(max_obs)),
             "desired_goal": goal_space,
             "achieved_goal": goal_space
         })

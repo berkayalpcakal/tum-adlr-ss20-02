@@ -130,7 +130,7 @@ class SettableGoalEnv(ISettableGoalEnv):
         obs = self._make_obs_object()
         reward = self.compute_reward(obs.achieved_goal, obs.desired_goal, {})
         is_success = reward == max(self.reward_range)
-        done = (is_success or self._step_num % self.max_episode_len == 0)
+        done = (is_success or self._step_num >= self.max_episode_len)
         if done and len(self._successes_per_goal) > 0:
             self._successes_per_goal[tuple(self._goal_pos)].append(is_success)
         return obs, reward, done, {"is_success": float(is_success)}
@@ -157,11 +157,12 @@ class SettableGoalEnv(ISettableGoalEnv):
         return self._make_obs_object()
 
     def _make_obs_object(self) -> Observation:
+        time_feature = (-2/self.max_episode_len)*self._step_num + 1
         if self._obs_as_img:
-            return Observation(observation=np.empty(0),
+            return Observation(observation=np.array([time_feature]),
                                achieved_goal=self._achieved_img,
                                desired_goal=self._desired_img)
-        return Observation(observation=self._cur_obs,
+        return Observation(observation=np.append(self._cur_obs, time_feature),
                            achieved_goal=self._agent_pos,
                            desired_goal=self._goal_pos)
 

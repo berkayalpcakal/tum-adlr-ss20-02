@@ -64,8 +64,10 @@ class PyBullet(Simulator):
     _arrow_fname = os.path.join(__filelocation__, "assets/arrow.urdf")
 
     def __init__(self, visualize=False, labyrinth=SimpleLabyrinthConfig()):
+        min_vel, max_vel = (-np.inf, np.inf)
+        min_time, max_time = (-1, 1)
         self.observation_space = gym.spaces.Dict(spaces={
-            "observation": gym.spaces.Box(low=-np.inf, high=np.inf, shape=(2, )),
+            "observation": gym.spaces.Box(low=np.array([min_vel, min_vel, min_time]), high=np.array([max_vel, max_vel, max_time])),
             "desired_goal": gym.spaces.Box(low=-1, high=1, shape=(2, )),
             "achieved_goal": gym.spaces.Box(low=-1, high=1, shape=(2, ))
         })

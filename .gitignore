@@ -11,3 +11,4 @@ backup/
 .ipynb_checkpoints/
 multi_goal/figs*/
 logs/
+*.csv
