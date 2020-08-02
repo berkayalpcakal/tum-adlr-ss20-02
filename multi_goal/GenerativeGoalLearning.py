@@ -18,8 +18,9 @@ Rmin = 0.1
 Rmax = 0.9
 
 G_Input_Size  = 4       # noise dim, somehow noise size is defined as 4 in their implementation for ant_gan experiment
-G_Hidden_Size = 256
-D_Hidden_Size = 512
+G_Hidden_Size = 32
+D_Hidden_Size = 64
+GEN_VAR_COEFF = 0.001
 ####################
 
 Returns = Sequence[float]
@@ -60,6 +61,7 @@ def initialize_GAN(env: gym.GoalEnv) -> LSGAN:
                     generator_output_size=dim_goal(env),
                     discriminator_input_size=dim_goal(env),
                     discriminator_hidden_size=D_Hidden_Size,
+                    gen_variance_coeff=GEN_VAR_COEFF,
                     discriminator_output_size=1) # distinguish whether g is in GOID or not
     return goalGAN
 
@@ -192,7 +194,7 @@ def evaluate(agent: Agent, env: ISettableGoalEnv, very_granular=False, plot=True
 
 
 def train_goalGAN(π: Agent, goalGAN: LSGAN, env: ISettableGoalEnv, eval_env: ISettableGoalEnv,
-                  pretrain_iters=5, use_old_goals=True) -> Iterator[None]:
+                  use_gan_goals=True, pretrain_iters=5, use_old_goals=True) -> Iterator[None]:
     """
     Algorithm in the GAN paper, Florensa 2018
 
@@ -208,13 +210,19 @@ def train_goalGAN(π: Agent, goalGAN: LSGAN, env: ISettableGoalEnv, eval_env: IS
     """
 
     #### PARAMETERS ####
-    num_gan_goals       = 60
-    num_old_goals       = num_gan_goals // 2 if use_old_goals else 0
-    num_rand_goals      = num_gan_goals // 2
+    if use_gan_goals:
+        num_gan_goals  = 60
+        num_rand_goals = num_gan_goals // 2
+        num_old_goals  = num_gan_goals // 2
+
+    else:
+        num_gan_goals  = 2
+        num_rand_goals = 80
+        num_old_goals  = num_rand_goals // 2
     ####################
 
     log_iter = lambda it_num: print(f"\n### BEGIN ITERATION {it_num} ###")
-
+    
     # Initial training of the policy with random goals
     for iter_num in range(pretrain_iters):
         log_iter(iter_num)
@@ -235,8 +243,8 @@ def train_goalGAN(π: Agent, goalGAN: LSGAN, env: ISettableGoalEnv, eval_env: IS
         rand_goals    = torch.Tensor(num_rand_goals, dim_goal(env)).uniform_(-1, 1)
         all_goals     = torch.cat([gan_goals, sample(goals_old, k=num_old_goals), rand_goals])
         π, returns    = yield from update_and_eval_policy(all_goals, π, env, eval_env)
-        display_goals(all_goals.detach().numpy(), returns, iter_num, env, gan_goals=raw_gan_goals.numpy())
+        display_goals(all_goals.detach().numpy(), returns, iter_num, env, gan_goals=raw_gan_goals.numpy() if use_gan_goals else None)
         labels        = label_goals(returns)
         if all([lab == 0 for lab in labels]): warnings.warn("All labels are 0")
-        goalGAN       = train_GAN(all_goals, labels, goalGAN)
+        if use_gan_goals: goalGAN = train_GAN(all_goals, labels, goalGAN)
         goals_old     = update_replay(gan_goals, goals_old=goals_old)
