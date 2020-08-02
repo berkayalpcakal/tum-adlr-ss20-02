@@ -37,8 +37,7 @@ class PPOAgent(Agent):
         action, _ = self._model.predict(flat_obs, deterministic=True)
         return action
 
-    def train(self, timesteps: int, num_checkpoints=4, eval_env: ISettableGoalEnv = None,
-              callbacks: Sequence[BaseCallback] = None):
+    def train(self, timesteps: int, num_checkpoints=4, callbacks: Sequence[BaseCallback] = None):
         ppo_offset = 128
         callbacks = [] if callbacks is None else callbacks
         cb = CheckpointCallback(save_freq=timesteps//num_checkpoints, save_path=self._dirs.models, name_prefix=self._dirs.prefix)
@@ -63,8 +62,7 @@ class HERSACAgent(Agent):
         action, _ = self._model.predict(obs, deterministic=True)
         return action
 
-    def train(self, timesteps: int, eval_env: ISettableGoalEnv = None,
-              callbacks: Sequence[BaseCallback] = None, num_checkpoints=4) -> None:
+    def train(self, timesteps: int, callbacks: Sequence[BaseCallback] = None, num_checkpoints=4) -> None:
         callbacks = [] if callbacks is None else callbacks
         cb = CheckpointCallback(save_freq=timesteps//num_checkpoints, save_path=self._dirs.models, name_prefix=self._dirs.prefix)
         self._model.learn(total_timesteps=timesteps, callback=CallbackList([cb, *callbacks]))
@@ -107,7 +105,7 @@ class GoalGANAgent(Agent):
 
     def train(self, timesteps: int, use_buffer=True, callbacks: Sequence[BaseCallback] = None) -> None:
         pretrain_iters = 0 if isinstance(self._agent, HERSACAgent) else 5
-        loop = train_goalGAN(π=self._agent, goalGAN=self._gan, env=self._env, eval_env=None,
+        loop = train_goalGAN(π=self._agent, goalGAN=self._gan, env=self._env,
                              pretrain_iters=pretrain_iters, use_old_goals=use_buffer)
 
         callbacks = [] if callbacks is None else callbacks

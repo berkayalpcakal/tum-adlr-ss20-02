@@ -66,7 +66,7 @@ def initialize_GAN(env: gym.GoalEnv) -> LSGAN:
     return goalGAN
 
 
-def update_and_eval_policy(goals: Tensor, π: Agent, env: ISettableGoalEnv, eval_env: ISettableGoalEnv) -> Tuple[Agent, Returns]:
+def update_and_eval_policy(goals: Tensor, π: Agent, env: ISettableGoalEnv) -> Tuple[Agent, Returns]:
     env.set_possible_goals(goals.numpy())
     env.reset()
 
@@ -193,8 +193,7 @@ def evaluate(agent: Agent, env: ISettableGoalEnv, very_granular=False, plot=True
     return reached, not_reached
 
 
-def train_goalGAN(π: Agent, goalGAN: LSGAN, env: ISettableGoalEnv, eval_env: ISettableGoalEnv,
-                  pretrain_iters=5, use_old_goals=True) -> Iterator[None]:
+def train_goalGAN(π: Agent, goalGAN: LSGAN, env: ISettableGoalEnv, pretrain_iters=5, use_old_goals=True) -> Iterator[None]:
     """
     Algorithm in the GAN paper, Florensa 2018
 
@@ -221,7 +220,7 @@ def train_goalGAN(π: Agent, goalGAN: LSGAN, env: ISettableGoalEnv, eval_env: IS
     for iter_num in range(pretrain_iters):
         log_iter(iter_num)
         rand_goals = torch.Tensor(num_rand_goals, dim_goal(env)).uniform_(-1, 0)
-        π, returns = yield from update_and_eval_policy(rand_goals, π, env, eval_env)
+        π, returns = yield from update_and_eval_policy(rand_goals, π, env)
         labels     = label_goals(returns)
         display_goals(rand_goals.detach().numpy(), returns, iter_num, env, fileNamePrefix='_')
         goalGAN    = train_GAN(rand_goals, labels, goalGAN)
@@ -236,7 +235,7 @@ def train_goalGAN(π: Agent, goalGAN: LSGAN, env: ISettableGoalEnv, eval_env: IS
         gan_goals     = torch.clamp(raw_gan_goals + 0.2*torch.randn(num_gan_goals, dim_goal(env)), min=-1, max=1)
         rand_goals    = torch.Tensor(num_rand_goals, dim_goal(env)).uniform_(-1, 1)
         all_goals     = torch.cat([gan_goals, sample(goals_old, k=num_old_goals), rand_goals])
-        π, returns    = yield from update_and_eval_policy(all_goals, π, env, eval_env)
+        π, returns    = yield from update_and_eval_policy(all_goals, π, env)
         display_goals(all_goals.detach().numpy(), returns, iter_num, env, gan_goals=raw_gan_goals.numpy())
         labels        = label_goals(returns)
         if all([lab == 0 for lab in labels]): warnings.warn("All labels are 0")
