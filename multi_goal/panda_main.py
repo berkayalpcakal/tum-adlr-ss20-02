@@ -12,10 +12,11 @@ def main(do_train: bool):
     env = PandaEnv(visualize=not do_train)
     agent = HERSACAgent(env=env)
     if do_train:
-        cb = EvaluateCallback(agent=agent, eval_env=PandaEnv())
-        agent.train(timesteps=50000, callbacks=[cb])
-    while True:
-        consume(trajectory(agent, env))
+        #cb = EvaluateCallback(agent=agent, eval_env=PandaEnv())
+        agent.train(timesteps=50000, callbacks=[])
+    else:
+        while True:
+            consume(trajectory(agent, env))
 
 
 if __name__ == '__main__':

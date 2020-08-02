@@ -35,8 +35,9 @@ class PandaSimulator(Simulator):
         p.configureDebugVisualizer(p.COV_ENABLE_Y_AXIS_UP, 1)
         p.configureDebugVisualizer(p.COV_ENABLE_GUI, 0)
         p.setGravity(0, -9.8, 0)
-        p.loadURDF("plane.urdf", baseOrientation=p.getQuaternionFromEuler([-math.pi/2, 0, 0]))
         self._pandasim = PandaSim(bullet_client=p, offset=[0, 0, 0])
+        #p.loadURDF("plane.urdf", [0, -0.625, 0], baseOrientation=p.getQuaternionFromEuler([-math.pi / 2, 0, 0]))
+        p.loadURDF("table/table.urdf", [0, -0.625, -0.5], baseOrientation=pybullet.getQuaternionFromEuler([-np.pi/2, np.pi/2, 0]))
         self._remove_unnecessary_objects()
 
         abs_lego_starting_pos = [0, 0.015, -0.5]
@@ -51,7 +52,7 @@ class PandaSimulator(Simulator):
         self._goal_ball = p.loadURDF(self._green_ball_fname, basePosition=self._goal_pos, useFixedBase=1, globalScaling=1/8)
 
         bound = np.sqrt((0.8**2)/3)
-        goal_space = gym.spaces.Box(low=np.array([-bound, 0, -bound]), high=np.array([bound, bound, -0.2]))  # dont hit base
+        goal_space = gym.spaces.Box(low=np.array([-bound, 0.1, -bound]), high=np.array([bound, bound, -0.25]))  # dont hit base
 
         min_vel, max_vel = (-np.inf, np.inf)
         min_time, max_time = (-1, 1)
@@ -67,9 +68,9 @@ class PandaSimulator(Simulator):
         self._do_visualize = visualize
 
     def _remove_unnecessary_objects(self):
-        spheres_ids = [5, 6, 7]
-        legos_ids = [2, 3, 4]
-        tray_id = [1]
+        spheres_ids = [4, 5, 6]
+        legos_ids = [1, 2, 3]
+        tray_id = [0]
         [self._p.removeBody(e) for e in spheres_ids + legos_ids + tray_id]
 
     def step(self, action: np.ndarray) -> SimObs:
