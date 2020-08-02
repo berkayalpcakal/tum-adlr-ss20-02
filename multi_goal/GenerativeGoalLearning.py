@@ -177,8 +177,12 @@ def trajectory(pi: Agent, env: ISettableGoalEnv, goal: np.ndarray = None,
 def evaluate(agent: Agent, env: ISettableGoalEnv, very_granular=False, plot=True, silent=False,
              coarseness_per_dim=30):
     coarseness = complex(0, coarseness_per_dim if very_granular else 6)
-    goals = np.mgrid[-1:1:coarseness, -1:1:coarseness].reshape((2, -1)).T
-    env.seed(0)
+    goal_dim = env.observation_space["desired_goal"].shape[0]
+    if goal_dim == 2:
+        goals = np.mgrid[-1:1:coarseness, -1:1:coarseness].reshape((2, -1)).T
+    else:
+        goals = np.array([env.observation_space["desired_goal"].sample() for _ in range(50)])
+
     env.set_possible_goals(goals)
     for idx, _ in enumerate(goals):
         consume(trajectory(agent, env))
