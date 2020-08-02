@@ -42,7 +42,8 @@ class PandaSimulator(Simulator):
         abs_lego_starting_pos = [0, 0.015, -0.5]
         abs_lego_starting_euler_orn = [-np.pi/2, 0, 0]
         p.resetBasePositionAndOrientation(self._pandasim.legos[0], abs_lego_starting_pos, p.getQuaternionFromEuler(abs_lego_starting_euler_orn))
-        self.normed_starting_agent_obs = self._get_all_legos_pos_and_orns()
+        #self.normed_starting_agent_obs = self._get_all_legos_pos_and_orns()
+        self.normed_starting_agent_obs = self._get_endeffector_pos_and_orn()
 
         self._original_joint_states = self._p.getJointStates(self._pandasim.panda, range(self._num_joints))
         self._goal_pos = np.zeros(7)
@@ -66,7 +67,7 @@ class PandaSimulator(Simulator):
 
     def _remove_unnecessary_objects(self):
         spheres_ids = [5, 6, 7]
-        legos_ids = [3, 4]
+        legos_ids = [2, 3, 4]
         tray_id = [1]
         [self._p.removeBody(e) for e in spheres_ids + legos_ids + tray_id]
 
@@ -94,8 +95,13 @@ class PandaSimulator(Simulator):
                 time.sleep(1/240)
 
         joint_pos_and_vels = self._get_joints_info()
-        legos_pos_and_orns = self._get_all_legos_pos_and_orns()
-        return SimObs(agent_pos=legos_pos_and_orns, obs=joint_pos_and_vels, image=np.empty(0))
+        agent_pos = self._get_endeffector_pos_and_orn()
+        #legos_pos_and_orns = self._get_all_legos_pos_and_orns()
+        return SimObs(agent_pos=agent_pos, obs=joint_pos_and_vels, image=np.empty(0))
+
+    def _get_endeffector_pos_and_orn(self):
+        endeffector_pos, ef_orn, *_ = self._p.getLinkState(self._pandasim.panda, pandaEndEffectorIndex)
+        return np.array(list(chain(endeffector_pos, ef_orn)))
 
     def _get_all_legos_pos_and_orns(self) -> np.ndarray:
         pos_and_orns = [self._p.getBasePositionAndOrientation(l) for l in self._pandasim.legos[:1]]  # Just the first lego for now.
@@ -108,7 +114,14 @@ class PandaSimulator(Simulator):
 
     def set_agent_pos(self, pos: np.ndarray) -> None:
         self._reset_panda_to_original_joint_states()
-        self._p.resetBasePositionAndOrientation(self._pandasim.legos[0], pos[:3], pos[3:])
+        self._reset_panda_to_pos(pos)
+        #self._p.resetBasePositionAndOrientation(self._pandasim.legos[0], pos[:3], pos[3:])
+
+    def _reset_panda_to_pos(self, pos):
+        joint_poses = self._p.calculateInverseKinematics(
+            self._pandasim.panda, pandaEndEffectorIndex, pos[:3], pos[3:], ll, ul, jr, rp)
+        for idx in range(pandaNumDofs):
+            self._p.resetJointState(self._pandasim.panda, idx, joint_poses[idx])
 
     def set_goal_pos(self, pos: np.ndarray) -> None:
         self._p.resetBasePositionAndOrientation(self._goal_ball, pos[:3], pos[3:])
