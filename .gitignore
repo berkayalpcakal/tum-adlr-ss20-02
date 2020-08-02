@@ -9,7 +9,6 @@ profiling*.png
 all-results/
 backup/
 .ipynb_checkpoints/
-multi_goal/figs*/
 logs/
 *.csv
 *.R
