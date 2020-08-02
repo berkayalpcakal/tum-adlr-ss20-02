@@ -80,7 +80,7 @@ class EvaluateCallback(BaseCallback):
             file.write("Step,MapPctCovered\n")
 
     def _on_step(self) -> bool:
-        if self.num_timesteps % 5000 == 0:
+        if self.num_timesteps % 10000 == 0:
             self._log_performance()
         return True
 
@@ -91,8 +91,6 @@ class EvaluateCallback(BaseCallback):
         log = f"{self.num_timesteps},{round(pct, 6)}\n"
         with open(self._log_fname, "a") as file:
             file.write(log)
-            file.flush()
-            os.fsync(file.fileno())
 
 
 class GoalGANAgent(Agent):
@@ -107,9 +105,10 @@ class GoalGANAgent(Agent):
     def __call__(self, obs: Observation) -> np.ndarray:
         return self._agent(obs)
 
-    def train(self, timesteps: int, use_buffer=True, use_gan_goals=True, pretrain_iters = 5, callbacks: Sequence[BaseCallback] = None) -> None:
+    def train(self, timesteps: int, use_buffer=True, callbacks: Sequence[BaseCallback] = None) -> None:
+        pretrain_iters = 0 if isinstance(self._agent, HERSACAgent) else 5
         loop = train_goalGAN(π=self._agent, goalGAN=self._gan, env=self._env, eval_env=None,
-                             use_gan_goals=use_gan_goals, pretrain_iters=pretrain_iters, use_old_goals=use_buffer)
+                             pretrain_iters=pretrain_iters, use_old_goals=use_buffer)
 
         callbacks = [] if callbacks is None else callbacks
         cb = AnyFunctionTrainingCallback(callback=lambda: next(loop))
