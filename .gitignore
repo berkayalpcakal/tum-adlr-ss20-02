@@ -12,3 +12,4 @@ backup/
 multi_goal/figs*/
 logs/
 *.csv
+*.R
