@@ -153,11 +153,12 @@ class SettableGoalEnv(ISettableGoalEnv):
         is_success = self._sim.is_success(achieved=achieved_goal, desired=desired_goal)
         return max(self.reward_range) if is_success else min(self.reward_range)
 
-    def reset(self) -> Observation:
+    def reset(self, reset_agent_pos=True) -> Observation:
         self._step_num = 0
 
-        self._agent_pos = self._new_initial_pos()
-        self._sim.set_agent_pos(self._agent_pos)
+        if reset_agent_pos:
+            self._agent_pos = self._new_initial_pos()
+            self._sim.set_agent_pos(self._agent_pos)
 
         self._goal_pos = self._new_goal()
         self._desired_img = self._sim.set_goal_pos(self._goal_pos)

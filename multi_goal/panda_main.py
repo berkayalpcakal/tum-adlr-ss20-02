@@ -20,5 +20,16 @@ def main(do_train: bool):
             consume(trajectory(agent, env))
 
 
+def continuous_viz():
+    env = PandaEnv(visualize=True)
+    agent = HERSACAgent(env=env, experiment_name="goalgan-her-sac")
+    obs = env.reset()
+    while True:
+        action = agent(obs)
+        obs, _, done, info = env.step(action)
+        if done:
+            obs = env.reset(reset_agent_pos=not info["is_success"])
+
+
 if __name__ == '__main__':
     main()
