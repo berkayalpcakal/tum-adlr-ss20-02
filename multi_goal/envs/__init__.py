@@ -19,12 +19,21 @@ class Observation(OrderedDict):
         self.observation = observation
         self.achieved_goal = achieved_goal
         self.desired_goal = desired_goal
+        self._tol = 1e-4
 
     def __eq__(self, other):
-        return all(np.allclose(other[k], v) for k, v in self.items())
+        return all(np.allclose(other[k], v, atol=self._tol) for k, v in self.items())
 
     def __ne__(self, other):
         return not self.__eq__(other)
+
+    def _cmp(self, x, y):
+        return np.allclose(x, y, atol=self._tol)
+
+    def equal_except_time(self, other):
+        return (self._cmp(self.observation[:-1], other.observation[:-1]) and
+                self._cmp(self.achieved_goal, other.achieved_goal) and
+                self._cmp(self.desired_goal, other.desired_goal))
 
 
 class ISettableGoalEnv(ABC, gym.GoalEnv):

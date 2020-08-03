@@ -5,7 +5,7 @@ import pytest
 from pybullet_robots.panda.panda_sim_grasp import pandaNumDofs
 
 from multi_goal.GenerativeGoalLearning import trajectory, null_agent
-from multi_goal.envs import Observation
+from multi_goal.envs import Observation, ISettableGoalEnv
 from multi_goal.envs.pybullet_labyrinth_env import Labyrinth, HardLabyrinth
 from multi_goal.envs.pybullet_panda_robot import PandaEnv
 from multi_goal.envs.toy_labyrinth_env import normalizer, ToyLabSimulator, ToyLab
@@ -192,6 +192,30 @@ class TestSuiteForEnvs:
         assert env.reset().observation.size == obs_size
         null_action = np.zeros(shape=env.action_space.shape)
         assert env.step(null_action)[0].observation.size == obs_size
+
+    def test_parallel_envs_dont_affect_each_other(self, env_fn):
+        env = env_fn()
+        steady_obs = put_in_steady_state(env)
+
+        env2 = env_fn()
+        env2.reset()
+        for _ in range(10):
+            env2.step(env2.action_space.sample())[0]
+
+        null_action = np.zeros(shape=env.action_space.shape)
+        assert steady_obs.equal_except_time(env.step(null_action)[0])
+
+
+def put_in_steady_state(env) -> Observation:
+    """Meaning null actions dont keep observations the same"""
+    null_action = np.zeros(shape=env.action_space.shape)
+    old_obs = env.reset()
+    while True:
+        obs: Observation = env.step(null_action)[0]
+        if obs.equal_except_time(old_obs):
+            break
+        old_obs = obs
+    return obs
 
 
 vel2d_plus_time = 3
