@@ -39,6 +39,7 @@ class ISettableGoalEnv(ABC, gym.GoalEnv):
 
 
 def normalizer(low, high):
+    dim = len(low)
     scaler = MinMaxScaler(feature_range=(-1, 1))
     scaler.fit([low, high])
 
@@ -49,9 +50,9 @@ def normalizer(low, high):
         if not isinstance(norm_goals, np.ndarray):
             norm_goals = np.array(list(norm_goals))
 
-        is_single_goal = norm_goals.size == 2
+        is_single_goal = norm_goals.size == dim
         if is_single_goal:
-            norm_goals = norm_goals.reshape((1, 2))
+            norm_goals = norm_goals.reshape((1, dim))
 
         res = scaler.inverse_transform(norm_goals)
         if is_single_goal:

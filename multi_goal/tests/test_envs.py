@@ -49,7 +49,7 @@ class TestSuiteForEnvs:
 
     def test_env_normalization(self, env_fn):
         if env_fn == PandaEnv:
-            pytest.skip("Pandas Env is not yet normalized to -1, 1")
+            pytest.skip("Pandas Env can reach beyond -1, 1")
 
         env = env_fn()
         space = env.observation_space["desired_goal"]
@@ -81,8 +81,6 @@ class TestSuiteForEnvs:
 
     @pytest.mark.parametrize("use_random_starting_pos", [True, False])
     def test_get_goal_successes(self, use_random_starting_pos: bool, env_fn):
-        if use_random_starting_pos and env_fn == PandaEnv:
-            pytest.skip("Pandas can't instatiate in any position")
         env = env_fn(use_random_starting_pos=use_random_starting_pos)
         assert all(len(successes) == 0 for successes in env.get_successes_of_goals().values())
         difficult_goal = env.observation_space["desired_goal"].high
@@ -181,10 +179,7 @@ class TestSuiteForEnvs:
         assert len(list(trajectory(pi=agent, env=env, goal=goal))) == 10
 
     def test_random_goals_cover_space(self, env_fn):
-        if env_fn == PandaEnv:
-            pytest.skip("Pandas Sim is not normalized yet to -1, 1")
-
-        env = env_fn(seed=0)
+        env = env_fn(seed=1)
         reset_goals = np.array([env.reset().desired_goal for _ in range(100)])
 
         relevant_dims = np.isfinite(env.observation_space["desired_goal"].high)
