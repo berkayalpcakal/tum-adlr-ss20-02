@@ -14,7 +14,7 @@ with warnings.catch_warnings():
     warnings.simplefilter(action="ignore", category=FutureWarning)
     from stable_baselines import PPO2, HER, SAC
 from multi_goal.GenerativeGoalLearning import Agent, evaluate, train_goalGAN, initialize_GAN
-from multi_goal.envs import Observation, ISettableGoalEnv
+from multi_goal.envs import Observation, ISettableGoalEnv, dim_goal
 
 
 class PPOAgent(Agent):
@@ -98,15 +98,14 @@ class GoalGANAgent(Agent):
         self._gan = initialize_GAN(env=env)
         self._env = env
         summary(self._gan.Generator,     input_size=(1, 1, 4), device='cpu')
-        summary(self._gan.Discriminator, input_size=(1, 1, 2), device='cpu')
+        summary(self._gan.Discriminator, input_size=(1, 1, dim_goal(env)), device='cpu')
 
     def __call__(self, obs: Observation) -> np.ndarray:
         return self._agent(obs)
 
     def train(self, timesteps: int, use_buffer=True, callbacks: Sequence[BaseCallback] = None) -> None:
-        pretrain_iters = 0 if isinstance(self._agent, HERSACAgent) else 5
         loop = train_goalGAN(π=self._agent, goalGAN=self._gan, env=self._env,
-                             pretrain_iters=pretrain_iters, use_old_goals=use_buffer)
+                             use_old_goals=use_buffer)
 
         callbacks = [] if callbacks is None else callbacks
         cb = AnyFunctionTrainingCallback(callback=lambda: next(loop))

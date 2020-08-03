@@ -31,6 +31,7 @@ def get_updateable_scatter():
     scatters: Dict[str, PathCollection] = dict()
 
     def scatter(name: str, pts: np.ndarray, *args, **kwargs):
+        """pts is a Nx2 or Nx3 numpy array, where N=#samples"""
         if pts is None or len(pts) == 0:
             if name in scatters:
                 scatters.pop(name).remove()
@@ -89,8 +90,8 @@ def display_goals(goals: np.ndarray, returns, idx, env: ISettableGoalEnv, fileNa
     fig, ax = env.render(other_positions=colors,
                          show_agent_and_goal_pos=False,
                          positions_density=gan_goals)
-
-    fig.savefig("./figs/{}_{}.png".format(fileNamePrefix, idx))
+    if fig is not None:
+        fig.savefig("./figs/{}_{}.png".format(fileNamePrefix, idx))
 
 
 class Dirs:

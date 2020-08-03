@@ -223,7 +223,7 @@ def train_goalGAN(π: Agent, goalGAN: LSGAN, env: ISettableGoalEnv, pretrain_ite
     # Initial training of the policy with random goals
     for iter_num in range(pretrain_iters):
         log_iter(iter_num)
-        rand_goals = torch.Tensor(num_rand_goals, dim_goal(env)).uniform_(-1, 0)
+        rand_goals = torch.clamp(torch.Tensor([env.starting_agent_pos]) + 0.1*torch.randn(num_old_goals, dim_goal(env)), min=-1, max=1)
         π, returns = yield from update_and_eval_policy(rand_goals, π, env)
         labels     = label_goals(returns)
         display_goals(rand_goals.detach().numpy(), returns, iter_num, env, fileNamePrefix='_')
