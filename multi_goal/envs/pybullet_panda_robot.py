@@ -30,7 +30,7 @@ class PandaSimulator(Simulator):
     _num_joints = 12
     _arm_joints = list(range(pandaNumDofs))
     #_grasp_joints = [9, 10]
-    _all_joint_idxs = _arm_joints  # + _grasp_joints
+    _all_joint_idxs = set(_arm_joints)  # + _grasp_joints
     __filelocation__ = os.path.realpath(os.path.join(os.getcwd(), os.path.dirname(__file__)))
     _green_ball_fname = os.path.join(__filelocation__, 'assets/immaterial_ball.urdf')
 
@@ -116,7 +116,7 @@ class PandaSimulator(Simulator):
 
     def _get_joints_info(self) -> np.ndarray:
         joint_states = self._p.getJointStates(self._pandasim.panda, range(self._num_joints))
-        pos, vels, *_ = zip(*np.array(joint_states)[self._all_joint_idxs])
+        pos, vels, *_ = zip(*[s for idx, s in enumerate(joint_states) if idx in self._all_joint_idxs])
         return np.array([*pos, *vels])
 
     def set_agent_pos(self, pos: np.ndarray) -> None:
