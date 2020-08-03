@@ -10,9 +10,9 @@ def cmd_main(*args, **kwargs):
 
 def main(seed: int):
     env   = ToyLab(seed=seed)
-    π     = PPOAgent(env=env, experiment_name="goalgan-ppo-seed-{}".format(seed), rank=seed)
+    agent = PPOAgent(env=env, experiment_name="random-ppo-seed-{}".format(seed), rank=seed)
     #π     = HERSACAgent(env=env, experiment_name="goalgan-her-sac", rank=seed)
-    agent = GoalGANAgent(env=env, agent=π)
+    #agent = GoalGANAgent(env=env, agent=π)
 
     callback = EvaluateCallback(agent=agent, eval_env=ToyLab(seed=seed), rank=seed)
     agent.train(timesteps=int(1e6), callbacks=[callback])
