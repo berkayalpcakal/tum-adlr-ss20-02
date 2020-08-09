@@ -2,12 +2,11 @@ from itertools import combinations
 
 import gym
 import pytest
-from pybullet_robots.panda.panda_sim_grasp import pandaNumDofs
 
 from multi_goal.GenerativeGoalLearning import trajectory, null_agent
-from multi_goal.envs import Observation, ISettableGoalEnv
+from multi_goal.envs import Observation
 from multi_goal.envs.pybullet_labyrinth_env import Labyrinth, HardLabyrinth
-from multi_goal.envs.pybullet_panda_robot import PandaEnv
+from multi_goal.envs.pybullet_panda_robot import PandaEnv, PandaPickAndPlace
 from multi_goal.envs.toy_labyrinth_env import normalizer, ToyLabSimulator, ToyLab
 import numpy as np
 
@@ -30,7 +29,7 @@ def test_are_on_same_side_of_wall():
     assert not c._are_on_same_side_of_wall(below_wall, above_wall)
 
 
-@pytest.fixture(params=[Labyrinth, ToyLab, HardLabyrinth, PandaEnv], scope="module")
+@pytest.fixture(params=[Labyrinth, ToyLab, HardLabyrinth, PandaEnv, PandaPickAndPlace], scope="module")
 def env_fn(request):
     yield request.param
 
@@ -186,12 +185,12 @@ class TestSuiteForEnvs:
         assert cover_space(reset_goals[:, relevant_dims])
 
     def test_obs_size_as_expected(self, env_fn_and_obs_size):
-        env_fn, obs_size = env_fn_and_obs_size
+        env_fn, expected_obs_size = env_fn_and_obs_size
         env = env_fn()
-        assert env.observation_space["observation"].shape[0] == obs_size
-        assert env.reset().observation.size == obs_size
+        assert env.observation_space["observation"].shape[0] == expected_obs_size
+        assert env.reset().observation.size == expected_obs_size
         null_action = np.zeros(shape=env.action_space.shape)
-        assert env.step(null_action)[0].observation.size == obs_size
+        assert env.step(null_action)[0].observation.size == expected_obs_size
 
     def test_parallel_envs_dont_affect_each_other(self, env_fn):
         env = env_fn()
@@ -226,7 +225,8 @@ pos_and_vels = 2*7
 @pytest.fixture(params=[(ToyLab, time_only),
                         (Labyrinth, vel2d_plus_time),
                         (HardLabyrinth, vel2d_plus_time),
-                        (PandaEnv, pos_and_vels + time_only)])
+                        (PandaEnv, pos_and_vels + time_only),
+                        (PandaPickAndPlace, 3 + time_only)])
 def env_fn_and_obs_size(request):
     return request.param
 

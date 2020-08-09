@@ -3,18 +3,34 @@ from more_itertools import consume
 
 from multi_goal.GenerativeGoalLearning import trajectory
 from multi_goal.agents import HERSACAgent, EvaluateCallback, GoalGANAgent
-from multi_goal.envs.pybullet_panda_robot import PandaEnv
+from multi_goal.envs.pybullet_panda_robot import PandaEnv, PandaPickAndPlace
+
+
+class Task:
+    REACH = "reach"
+    PICK_AND_PLACE = "pickplace"
 
 
 @click.command()
+@click.option("--task", type=click.Choice([Task.REACH, Task.PICK_AND_PLACE]))
+@click.option("--use-gan", is_flag=True, default=False)
 @click.option("--do-train", is_flag=True, default=False)
-def main(do_train: bool):
-    env = PandaEnv(visualize=not do_train)
-    agent = HERSACAgent(env=env, experiment_name="goalgan-her-sac")
-    agent = GoalGANAgent(env=env, agent=agent)
+@click.option("--perform-eval", is_flag=True, default=False)
+def main(task: str, use_gan: bool, do_train: bool, perform_eval: bool):
+    env_params = {"visualize": not do_train}
+    env_fn = PandaEnv if task == Task.REACH else PandaPickAndPlace
+    env = env_fn(**env_params)
+
+    agent_params = {"env": env}
+    if use_gan:
+        agent_params["experiment_name"] = "goalgan-her-sac"
+    agent = HERSACAgent(**agent_params)
+    if use_gan:
+        agent = GoalGANAgent(env=env, agent=agent)
+
     if do_train:
-        cb = EvaluateCallback(agent=agent, eval_env=PandaEnv())
-        agent.train(timesteps=50000, callbacks=[cb])
+        cbs = [EvaluateCallback(agent=agent, eval_env=env_fn(**env_params))] if perform_eval else []
+        agent.train(timesteps=50000, callbacks=cbs)
     else:
         while True:
             consume(trajectory(agent, env))
