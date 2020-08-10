@@ -70,13 +70,15 @@ class HERSACAgent(Agent):
 
 
 class EvaluateCallback(BaseCallback):
-    def __init__(self, agent: Agent, eval_env: ISettableGoalEnv, rank=0, specific_goal: np.ndarray = None):
+    def __init__(self, agent: Agent, eval_env: ISettableGoalEnv, rank=0, specific_goal: np.ndarray = None,
+                 experiment_name: str = None):
         super().__init__()
         self._specific_goal = specific_goal
         metric = "MapPctCovered" if specific_goal is None else "CanReachTargetGoal"
         self._agent = agent
         self._eval_env = eval_env
-        self._log_fname = f"{type(eval_env).__name__}-{agent.name}-{rank}-performance.csv"
+        experiment_name = agent.name if experiment_name is None else experiment_name
+        self._log_fname = f"{type(eval_env).__name__}-{experiment_name}-{rank}-performance.csv"
         with open(self._log_fname, "w") as file:
             file.write(f"Step,{metric}\n")
 
