@@ -178,9 +178,9 @@ class PandaSimulator(Simulator):
             fig, ax, scatter_fn = get_updateable_scatter(three_dim=True)
             ax.set_autoscale_on(True)
             paths, = ax.plot([], [], [])
-            ax.set_xlim3d(-0.8, 0.8)
-            ax.set_ylim3d(-0.8, 0.15)
-            ax.set_zlim3d(0, 0.75)
+            ax.set_xlim3d(-1.1*_goal_space_bound, 1.1*_goal_space_bound)
+            ax.set_ylim3d(-1.1*_goal_space_bound, 0.15)
+            ax.set_zlim3d(0, 1.1*_goal_space_bound)
             fig.show()
             self._plot = fig, ax, scatter_fn, paths
         fig, ax, scatter_fn, paths = self._plot
