@@ -25,9 +25,10 @@ def print_message(msg: str):
     return decorator
 
 
-def get_updateable_scatter():
+def get_updateable_scatter(three_dim=False):
     plt.ion()
-    fig, ax = plt.subplots()
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection="3d") if three_dim else fig.add_subplot(111)
     scatters: Dict[str, PathCollection] = dict()
 
     def scatter(name: str, pts: np.ndarray, *args, **kwargs):
@@ -37,9 +38,9 @@ def get_updateable_scatter():
                 scatters.pop(name).remove()
 
         else:
-            if pts.size == 2:
+            if pts.size in {2, 3}:
                 pts = pts[np.newaxis]
-            assert pts.shape[1] == 2, "Inputs pts must have shape (N, 2)"
+            assert pts.shape[1] in {2, 3}, "Inputs pts must have shape (N, 2) or (N, 3)"
 
             if name in scatters:
                 scatters[name].set_offsets(pts)

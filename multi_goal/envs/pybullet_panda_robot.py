@@ -1,6 +1,6 @@
 import os
 from abc import ABC
-from typing import Type
+from typing import Type, Mapping
 
 import math
 import time
@@ -15,6 +15,7 @@ import pybullet_data as pd
 import pybullet
 
 from multi_goal.envs import Simulator, SimObs, SettableGoalEnv, normalizer
+from multi_goal.utils import get_updateable_scatter
 
 
 class PandaEnv(SettableGoalEnv):
@@ -99,6 +100,7 @@ class PandaSimulator(Simulator):
         self.action_dim = 4 if task.can_control_gripper else 3  # [dx, dy, dz, dgrasp] as a change in gripper 3d-positon, where the y-axis references the height"""
         self._sim_steps_per_timestep = 10
         self._do_visualize = visualize
+        self._plot = None
 
     def _remove_unnecessary_objects(self):
         spheres_ids = [4, 5, 6]
@@ -170,13 +172,46 @@ class PandaSimulator(Simulator):
         distance = np.linalg.norm(np.subtract(achieved, desired))
         return distance <= self._good_enough_distance
 
-    def render(self, *args, **kwargs):
-        return None, None
+    def render(self, other_positions: Mapping[str, np.ndarray] = None,
+               show_agent_and_goal_pos=False):
+        if self._plot is None:
+            fig, ax, scatter_fn = get_updateable_scatter(three_dim=True)
+            ax.set_autoscale_on(True)
+            paths, = ax.plot([], [], [])
+            ax.set_xlim3d(-0.8, 0.8)
+            ax.set_ylim3d(-0.8, 0.15)
+            ax.set_zlim3d(0, 0.75)
+            fig.show()
+            self._plot = fig, ax, scatter_fn, paths
+        fig, ax, scatter_fn, paths = self._plot
+
+        links_center_of_mass = np.array([s[0] for s in self._p.getLinkStates(self._pandasim.panda, range(pandaNumDofs))])
+        links_center_of_mass = _rotate(links_center_of_mass)
+        paths.set_data(*links_center_of_mass[:, :2].T)
+        paths.set_3d_properties(links_center_of_mass[:, 2])
+
+        if other_positions is not None:
+            for color, positions in other_positions.items():
+                scatter_fn(name=color, pts=None)  # clear previous
+                if len(positions) > 0:
+                    scatter_fn(name=color, pts=_rotate(_denormalize(positions)), c=color)
+
+        fig.tight_layout()
+        fig.canvas.draw()
+        fig.canvas.flush_events()
+        return fig, ax
 
     def _reset_panda_to_original_joint_states(self):
         joint_pos_and_vels = [(state[0], state[1]) for state in self._original_joint_states]
         for idx, (pos, vel) in enumerate(joint_pos_and_vels):
             self._p.resetJointState(self._pandasim.panda, idx, pos, vel)
+
+
+def _rotate(pos: np.ndarray) -> np.ndarray:
+    y_axis_up_permutation = [0, 2, 1]  # y-axis is up.
+    if len(pos.shape) == 1:
+        return pos[y_axis_up_permutation]
+    return pos[:, y_axis_up_permutation]
 
 
 def keyboard_control():
