@@ -109,7 +109,8 @@ class Dirs:
 
 def latest_model(foldername: str):
     model_names = os.listdir(foldername)
-    assert len(model_names) > 0, f"The folder {foldername} exists, but contains no model files."
+    if len(model_names) == 0:
+        return "Not found"
     if len(model_names) == 1:
         return model_names[0]
     prefix_less, prefix = remove_common_prefix(model_names)

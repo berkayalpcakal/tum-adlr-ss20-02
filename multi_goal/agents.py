@@ -13,7 +13,8 @@ from multi_goal.utils import Dirs
 with warnings.catch_warnings():
     warnings.simplefilter(action="ignore", category=FutureWarning)
     from stable_baselines import PPO2, HER, SAC
-from multi_goal.GenerativeGoalLearning import Agent, evaluate, train_goalGAN, initialize_GAN
+from multi_goal.GenerativeGoalLearning import Agent, evaluate, train_goalGAN, initialize_GAN, \
+    trajectory
 from multi_goal.envs import Observation, ISettableGoalEnv, dim_goal
 
 
@@ -26,7 +27,7 @@ class PPOAgent(Agent):
         self._flat_env = HERGoalEnvWrapper(env)
         options = {"env": DummyVecEnv([lambda: self._flat_env]), "tensorboard_log": self._dirs.tensorboard,
                    "gamma": 1, "seed": rank, "nminibatches": 1}
-        if os.path.isdir(self._dirs.models):
+        if os.path.isdir(self._dirs.models) and os.path.isfile(self._dirs.best_model):
             self._model = PPO2.load(load_path=self._dirs.best_model, **options)
             print(f"Loaded model {self._dirs.best_model}")
         else:
@@ -52,7 +53,7 @@ class HERSACAgent(Agent):
         self._dirs = Dirs(experiment_name=f"{type(env).__name__}-{experiment_name}", rank=rank)
         options = {"env": env, "tensorboard_log": self._dirs.tensorboard, "model_class": SAC,
                    "policy_kwargs": dict(layers=[128]*2), "gamma": 1}
-        if os.path.isdir(self._dirs.models):
+        if os.path.isdir(self._dirs.models) and os.path.isfile(self._dirs.best_model):
             self._model = HER.load(load_path=self._dirs.best_model, **options)
             print(f"Loaded model {self._dirs.best_model}")
         else:
@@ -69,24 +70,37 @@ class HERSACAgent(Agent):
 
 
 class EvaluateCallback(BaseCallback):
-    def __init__(self, agent: Agent, eval_env: ISettableGoalEnv, rank=0):
+    def __init__(self, agent: Agent, eval_env: ISettableGoalEnv, rank=0, specific_goal: np.ndarray = None):
         super().__init__()
+        self._specific_goal = specific_goal
+        metric = "MapPctCovered" if specific_goal is None else "CanReachTargetGoal"
         self._agent = agent
         self._eval_env = eval_env
         self._log_fname = f"{type(eval_env).__name__}-{agent.name}-{rank}-performance.csv"
         with open(self._log_fname, "w") as file:
-            file.write("Step,MapPctCovered\n")
+            file.write(f"Step,{metric}\n")
 
     def _on_step(self) -> bool:
         if self.num_timesteps % 5000 == 0:
-            self._log_performance()
+            if self._specific_goal is None:
+                self._log_full_goal_space_performance()
+            else:
+                self._log_specific_goal_performance()
         return True
 
-    def _log_performance(self):
+    def _log_full_goal_space_performance(self):
         reached, not_reached = evaluate(agent=self._agent, env=self._eval_env, plot=False,
                                         silent=True, very_granular=True, coarseness_per_dim=10)
         pct = len(reached) / (len(reached) + len(not_reached))
         log = f"{self.num_timesteps},{round(pct, 6)}\n"
+        with open(self._log_fname, "a") as file:
+            file.write(log)
+
+    def _log_specific_goal_performance(self):
+        for step in trajectory(pi=self._agent, env=self._eval_env, goal=self._specific_goal):
+            pass
+        info = step[-1]
+        log = f"{self.num_timesteps},{int(info['is_success'])}\n"
         with open(self._log_fname, "a") as file:
             file.write(log)
 
