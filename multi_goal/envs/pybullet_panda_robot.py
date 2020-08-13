@@ -5,6 +5,7 @@ from typing import Type, Mapping
 import math
 import time
 from itertools import repeat, chain, count
+import matplotlib.pyplot as plt
 
 import gym
 import numpy as np
@@ -199,6 +200,7 @@ class PandaSimulator(Simulator):
         fig.tight_layout()
         fig.canvas.draw()
         fig.canvas.flush_events()
+        plt.pause(0.01)
         return fig, ax
 
     def _reset_panda_to_original_joint_states(self):
