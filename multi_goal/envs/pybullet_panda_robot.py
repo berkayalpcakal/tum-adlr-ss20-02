@@ -32,8 +32,8 @@ class PandaPickAndPlace(SettableGoalEnv):
 
 
 _goal_space_bound = np.sqrt((0.8 ** 2) / 3)
-_goal_low = np.array([-_goal_space_bound, 0.01, -_goal_space_bound])
-_goal_high = np.array([_goal_space_bound, _goal_space_bound, -0.25])  # dont hit robot base
+_goal_low = np.array([-0.25, 0.01, -0.7])
+_goal_high = np.array([0.25, _goal_space_bound, -_goal_space_bound])  # dont hit robot base
 _normalize, _denormalize = normalizer(low=_goal_low, high=_goal_high)
 
 
@@ -72,7 +72,7 @@ class PandaSimulator(Simulator):
         load_orn = p.getQuaternionFromEuler([-np.pi / 2, np.pi / 2, 0])
         p.loadURDF("table/table.urdf", [0, -0.625, -0.5], baseOrientation=load_orn, useFixedBase=1)
         if not task.goal_is_endeffector:
-            self._block_id = p.loadURDF(self._red_block_fname, [0, 0, -0.3], baseOrientation=load_orn, globalScaling=0.03)
+            self._block_id = p.loadURDF(self._red_block_fname, [0, 0, -0.5], baseOrientation=load_orn, globalScaling=0.03)
         self._remove_unnecessary_objects()
 
         abs_lego_starting_pos = [0, 0.015, -0.5]
@@ -110,14 +110,14 @@ class PandaSimulator(Simulator):
         [self._p.removeBody(e) for e in spheres_ids + legos_ids + tray_id]
 
     def step(self, action: np.ndarray) -> SimObs:
-        movement_factor = 1/50
+        movement_factor = 1/25
         gripper_action = action[3] if self._task.can_control_gripper else 0
         action = np.append((np.array(action)[:3] * movement_factor), gripper_action)
         cur_pos, *_ = self._p.getLinkState(self._pandasim.panda, pandaEndEffectorIndex)
         pos = [coord+delta for coord, delta in zip(cur_pos, action)]
 
         grasp_forces = [50, 50]
-        forces = chain(repeat(5*240, pandaNumDofs), grasp_forces if self._task.can_control_gripper else [])
+        forces = chain(repeat(5*20, pandaNumDofs), grasp_forces if self._task.can_control_gripper else [])
 
         for idx in range(self._sim_steps_per_timestep):
             if idx % 5 == 0:
@@ -246,6 +246,6 @@ if __name__ == '__main__':
         for t in count():
             action = keyboard_control()
             obs, reward, done, info = env.step(action=action)
-            print(done, obs.achieved_goal.round(2), obs.desired_goal.round(2))
+            print(done, obs.achieved_goal.round(2), obs.desired_goal.round(2), f"time: {t}")
             if done:
                 break

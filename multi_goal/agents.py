@@ -83,7 +83,7 @@ class EvaluateCallback(BaseCallback):
             file.write(f"Step,{metric}\n")
 
     def _on_step(self) -> bool:
-        if self.num_timesteps % 5000 == 0:
+        if self.num_timesteps % 500 == 0:
             if self._specific_goal is None:
                 self._log_full_goal_space_performance()
             else:
