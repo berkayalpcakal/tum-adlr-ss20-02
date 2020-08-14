@@ -52,7 +52,7 @@ class HERSACAgent(Agent):
         self._env = env
         self._dirs = Dirs(experiment_name=f"{type(env).__name__}-{experiment_name}", rank=rank)
         options = {"env": env, "tensorboard_log": self._dirs.tensorboard, "model_class": SAC,
-                   "policy_kwargs": dict(layers=[128]*2), "gamma": 1}
+                   "gamma": 1, "learning_rate": 3e-3}
         if os.path.isdir(self._dirs.models) and os.path.isfile(self._dirs.best_model):
             self._model = HER.load(load_path=self._dirs.best_model, **options)
             print(f"Loaded model {self._dirs.best_model}")

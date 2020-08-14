@@ -3,6 +3,7 @@ from typing import Mapping
 
 import gym
 import numpy as np
+import matplotlib.pyplot as plt
 
 from multi_goal.envs import normalizer, SettableGoalEnv, Simulator, SimObs
 from multi_goal.utils import get_updateable_scatter, get_updateable_contour
@@ -113,6 +114,7 @@ class ToyLabSimulator(Simulator):
         fig.tight_layout()
         fig.canvas.draw()
         fig.canvas.flush_events()
+        plt.pause(0.001)
 
         return fig, ax
 
