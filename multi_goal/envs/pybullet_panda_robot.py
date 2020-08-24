@@ -178,18 +178,14 @@ class PandaSimulator(Simulator):
         if self._plot is None:
             fig, ax, scatter_fn = get_updateable_scatter(three_dim=True)
             ax.set_autoscale_on(True)
-            paths, = ax.plot([], [], [])
-            ax.set_xlim3d(-1.1*_goal_space_bound, 1.1*_goal_space_bound)
-            ax.set_ylim3d(-1.1*_goal_space_bound, 0.15)
-            ax.set_zlim3d(0, 1.1*_goal_space_bound)
+            xmin, zmin, ymin = _goal_low
+            xmax, zmax, ymax = _goal_high
+            ax.set_xlim3d(xmin, xmax)
+            ax.set_ylim3d(ymin, ymax)
+            ax.set_zlim3d(zmin, zmax)
             fig.show()
-            self._plot = fig, ax, scatter_fn, paths
-        fig, ax, scatter_fn, paths = self._plot
-
-        links_center_of_mass = np.array([s[0] for s in self._p.getLinkStates(self._pandasim.panda, range(pandaNumDofs))])
-        links_center_of_mass = _rotate(links_center_of_mass)
-        paths.set_data(*links_center_of_mass[:, :2].T)
-        paths.set_3d_properties(links_center_of_mass[:, 2])
+            self._plot = fig, ax, scatter_fn
+        fig, ax, scatter_fn = self._plot
 
         if other_positions is not None:
             for color, positions in other_positions.items():
