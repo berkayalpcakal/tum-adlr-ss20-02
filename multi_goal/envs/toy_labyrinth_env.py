@@ -52,13 +52,14 @@ class ToyLabSimulator(Simulator):
     _step_len = 0.5
     def _simulation_step(self, cur_pos: np.ndarray, action: np.ndarray) -> np.ndarray:
         assert cur_pos.shape == action.shape
+        small_val = 1e-6
         x1, x2 = cur_pos + self._step_len * action
 
         # no pass through 0
         if all(cur_pos <= 0):
-            x2 = min(0, x2)
+            x2 = min(-small_val, x2)
         if cur_pos[0] <= 0 and cur_pos[1] >= 0:
-            x2 = max(0, x2)
+            x2 = max(small_val, x2)
 
         return np.clip(np.array([x1, x2]), a_min=self._labyrinth_lower_bound, a_max=self._labyrinth_upper_bound)
 
