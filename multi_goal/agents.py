@@ -135,3 +135,14 @@ class AnyFunctionTrainingCallback(BaseCallback):
 
     def _on_rollout_start(self) -> None:
         self._callback()
+
+
+class RandomAgent(Agent):
+    def __init__(self, env: ISettableGoalEnv):
+        self._action_space = env.action_space
+
+    def __call__(self, obs: Observation) -> np.ndarray:
+        return self._action_space.sample()
+
+    def train(self, timesteps: int) -> None:
+        pass
